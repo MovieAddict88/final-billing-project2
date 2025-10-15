@@ -344,7 +344,7 @@
 					FROM
 						customers c
 					WHERE
-						? LIKE CONCAT('%', c.conn_location, '%')
+						c.conn_location LIKE CONCAT('%', ?, '%')
 				) as customer_status
 				GROUP BY
 					status
@@ -491,7 +491,7 @@
 		public function fetchCustomersByLocation($location, $limit = 10)
 		{
 			$limit = (int) $limit;
-			$request = $this->dbh->prepare("SELECT * FROM customers WHERE ? LIKE CONCAT('%', conn_location, '%') ORDER BY id DESC LIMIT ?");
+            $request = $this->dbh->prepare("SELECT * FROM customers WHERE conn_location LIKE CONCAT('%', ?, '%') ORDER BY id DESC LIMIT ?");
 			$request->bindValue(1, $location);
 			$request->bindValue(2, $limit, PDO::PARAM_INT);
 			if ($request->execute()) {
@@ -502,7 +502,7 @@
 
 		public function fetchProductsByCustomerLocation($location)
 		{
-			$request = $this->dbh->prepare("SELECT p.*, COUNT(c.id) as customer_count FROM packages p JOIN customers c ON p.id = c.package_id WHERE ? LIKE CONCAT('%', c.conn_location, '%') GROUP BY p.id");
+            $request = $this->dbh->prepare("SELECT p.*, COUNT(c.id) as customer_count FROM packages p JOIN customers c ON p.id = c.package_id WHERE c.conn_location LIKE CONCAT('%', ?, '%') GROUP BY p.id");
 			if ($request->execute([$location])) {
 				return $request->fetchAll();
 			}

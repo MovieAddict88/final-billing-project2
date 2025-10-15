@@ -61,9 +61,9 @@ function normalizeLocation($location) {
 					session::set('errors', ['Couldn\'t Add New Customer']);
 				}
 			}
-	}else if($page == 'del'){
+		}else if($page == 'del'){
 		$id = $_POST['id'];
-		if (!$admins->deletecustomer($id)) 
+		if (!$admins->deleteCustomer($id)) 
 		{
 			echo "Sorry Data could not be deleted !";
 		}else {
