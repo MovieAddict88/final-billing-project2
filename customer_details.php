@@ -21,6 +21,7 @@
     $customerInfo = $customerDetails['info'];
     $allBills = $customerDetails['bills'];
     $transactions = $customerDetails['transactions'];
+    $paymentLedger = $admins->fetchPaymentHistoryByCustomer($customerId) ?: [];
     $employer = null;
     if ($customerInfo && $customerInfo->employer_id) {
         $employer = $admins->getEmployerById($customerInfo->employer_id);
@@ -158,6 +159,44 @@
                     <?php else: ?>
                         <p>No transaction history found.</p>
                     <?php endif; ?>
+
+                    <h3>Invoice Payment Ledger</h3>
+                    <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead style="background-color: #008080; color: white;">
+                            <tr>
+                                <th>Time</th>
+                                <th>Billing Month</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Paid Amount</th>
+                                <th>Balance</th>
+                                <th>Payment Method</th>
+                                <th>Employer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php if (!empty($paymentLedger)): ?>
+                            <?php foreach ($paymentLedger as $row): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))) ?></td>
+                                    <td><?= htmlspecialchars($row->r_month) ?></td>
+                                    <td><?= htmlspecialchars($row->package_name ?: 'N/A') ?></td>
+                                    <td><?= number_format((float)$row->amount, 2) ?></td>
+                                    <td><?= number_format((float)$row->paid_amount, 2) ?></td>
+                                    <td><?= number_format((float)$row->balance_after, 2) ?></td>
+                                    <td><?= htmlspecialchars($row->payment_method ?: 'N/A') ?></td>
+                                    <td><?= htmlspecialchars($row->employer_name ?: 'Admin') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="8" class="text-center">No payment ledger yet.</td>
+                            </tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
                 <?php else: ?>
                     <p>Customer not found.</p>
                 <?php endif; ?>

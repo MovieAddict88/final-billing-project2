@@ -92,6 +92,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <img src="<?php echo $payment->screenshot; ?>" alt="Transaction Screenshot" class="img-fluid">
                     <?php endif; ?>
                     <hr>
+                    <h4>Ledger Entries for this Bill</h4>
+                    <?php
+                        $rows = $dbh->prepare("SELECT h.*, pkg.name AS package_name, u.full_name AS employer_name FROM payment_history h LEFT JOIN packages pkg ON h.package_id = pkg.id LEFT JOIN kp_user u ON h.employer_id = u.user_id WHERE h.payment_id = ? ORDER BY h.paid_at ASC, h.id ASC");
+                        $rows->execute([$payment_id]);
+                        $history = $rows->fetchAll();
+                    ?>
+                    <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Paid</th>
+                                <th>Balance After</th>
+                                <th>Method</th>
+                                <th>Employer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php if ($history): foreach ($history as $row): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))); ?></td>
+                                <td><?php echo number_format((float)$row->paid_amount, 2); ?></td>
+                                <td><?php echo number_format((float)$row->balance_after, 2); ?></td>
+                                <td><?php echo htmlspecialchars($row->payment_method ?: 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($row->employer_name ?: 'Admin'); ?></td>
+                            </tr>
+                        <?php endforeach; else: ?>
+                            <tr><td colspan="5" class="text-center">No ledger entries yet.</td></tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
+                    <hr>
                     <form action="" method="POST">
                         <button type="submit" name="approve" class="btn btn-success">Approve</button>
                         <button type="submit" name="reject" class="btn btn-danger">Reject</button>

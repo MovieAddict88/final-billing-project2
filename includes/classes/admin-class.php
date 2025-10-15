@@ -316,7 +316,7 @@
 				$details['bills'] = $request->fetchAll();
 			}
 
-			// Fetch transactions
+			// Fetch transactions (legacy summary slips) and detailed ledger
 			$request = $this->dbh->prepare("SELECT * FROM billings WHERE customer_id = ?");
 			if ($request->execute([$customerId])) {
 				$details['transactions'] = $request->fetchAll();
@@ -722,7 +722,55 @@
 			return false;
 		}
 
-        public function processPayment($payment_id, $payment_method, $reference_number, $amount_paid = null, $gcash_name = null, $gcash_number = null, $screenshot = null)
+		/**
+		 * Insert a row into payment_history to keep an immutable ledger of payments.
+		 */
+		public function insertPaymentHistoryEntry($payment, $paid_amount)
+		{
+			if (!$payment) {
+				return false;
+			}
+			$paid_amount = (float)$paid_amount;
+			if ($paid_amount <= 0) {
+				return false;
+			}
+			$package_id = $payment->package_id;
+			if (empty($package_id)) {
+				$customer = $this->getCustomerInfo($payment->customer_id);
+				$package_id = $customer ? $customer->package_id : null;
+			}
+			$request = $this->dbh->prepare("INSERT INTO payment_history (payment_id, customer_id, employer_id, package_id, r_month, amount, paid_amount, balance_after, payment_method, reference_number, paid_at) VALUES (?,?,?,?,?,?,?,?,?,?, NOW())");
+			return $request->execute([
+				$payment->id,
+				$payment->customer_id,
+				$payment->employer_id,
+				$package_id,
+				$payment->r_month,
+				(float)$payment->amount,
+				$paid_amount,
+				(float)$payment->balance,
+				$payment->payment_method,
+				$payment->reference_number,
+			]);
+		}
+
+		public function fetchPaymentHistoryByCustomer($customer_id)
+		{
+			$request = $this->dbh->prepare("
+				SELECT h.*, pkg.name AS package_name, u.full_name AS employer_name
+				FROM payment_history h
+				LEFT JOIN packages pkg ON h.package_id = pkg.id
+				LEFT JOIN kp_user u ON h.employer_id = u.user_id
+				WHERE h.customer_id = ?
+				ORDER BY h.paid_at DESC, h.id DESC
+			");
+			if ($request->execute([$customer_id])) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function processPayment($payment_id, $payment_method, $reference_number, $amount_paid = null, $gcash_name = null, $gcash_number = null, $screenshot = null)
 		{
 			$payment = $this->getPaymentById($payment_id);
 			if (!$payment) {
@@ -748,10 +796,10 @@
 				move_uploaded_file($screenshot['tmp_name'], $screenshot_path);
 			}
 
-            // Preserve submitted amount for admin display in gcash_name when e-wallets are used
-            $submitted_amount = (is_numeric($gcash_name) ? (float)$gcash_name : $paid_now);
-            $request = $this->dbh->prepare("UPDATE payments SET status = 'Pending', balance = ?, payment_method = ?, reference_number = ?, gcash_name = ?, gcash_number = ?, screenshot = ? WHERE id = ?");
-            return $request->execute([$new_balance, $payment_method, $reference_number, $submitted_amount, $gcash_number, $screenshot_path, $payment_id]);
+			// Preserve submitted amount for admin display in gcash_name when e-wallets are used
+			$submitted_amount = (is_numeric($gcash_name) ? (float)$gcash_name : $paid_now);
+			$request = $this->dbh->prepare("UPDATE payments SET status = 'Pending', balance = ?, payment_method = ?, reference_number = ?, gcash_name = ?, gcash_number = ?, screenshot = ? WHERE id = ?");
+			return $request->execute([$new_balance, $payment_method, $reference_number, $submitted_amount, $gcash_number, $screenshot_path, $payment_id]);
 		}
 
 		public function processManualPayment($customer_id, $employer_id, $amount, $reference_number, $selected_bills, $screenshot = null)
@@ -793,7 +841,7 @@
 					}
 
 					$request = $this->dbh->prepare(
-                        "UPDATE payments SET status = 'Pending', balance = ?, payment_method = 'Manual', employer_id = ?, reference_number = ?, screenshot = ?, gcash_name = ? WHERE id = ?"
+						"UPDATE payments SET status = 'Pending', balance = ?, payment_method = 'Manual', employer_id = ?, reference_number = ?, screenshot = ?, gcash_name = ? WHERE id = ?"
 					);
 					$request->execute([
 						$new_balance,
@@ -803,6 +851,8 @@
 						$payment_for_this_bill,
 						$bill_id
 					]);
+
+
 
 					$remaining_amount -= $payment_for_this_bill;
 				}
@@ -824,6 +874,25 @@
 			if ($payment->screenshot && file_exists($payment->screenshot)) {
 				unlink($payment->screenshot);
 			}
+			// Determine the submitted amount for this approval
+			$submitted_amount = 0.0;
+			if (isset($payment->gcash_name) && is_numeric($payment->gcash_name)) {
+				$submitted_amount = (float)$payment->gcash_name;
+			} else {
+				// Fallback: compute remaining unrecorded portion by subtracting any previously recorded amounts
+				$sumRequest = $this->dbh->prepare("SELECT COALESCE(SUM(paid_amount),0) AS total_recorded FROM payment_history WHERE payment_id = ?");
+				$sumRequest->execute([$payment_id]);
+				$row = $sumRequest->fetch();
+				$total_recorded = $row ? (float)$row->total_recorded : 0.0;
+				$already_paid_total = (float)$payment->amount - (float)$payment->balance;
+				$submitted_amount = max(0.0, $already_paid_total - $total_recorded);
+			}
+
+			// Insert a history entry for this payment approval
+			if ($submitted_amount > 0) {
+				$this->insertPaymentHistoryEntry($payment, $submitted_amount);
+			}
+
 			$new_status = ($payment->balance <= 0) ? 'Paid' : 'Unpaid';
 			$request = $this->dbh->prepare("UPDATE payments SET status = ?, p_date = NOW(), screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
 			return $request->execute([$new_status, $payment_id]);
@@ -940,7 +1009,19 @@
 					$values = explode(',', $bill_id);
 					$placeholder = rtrim(str_repeat('?, ', count($values)), ', ');
 
-					$request2 = $this->dbh->prepare("UPDATE payments SET status='Paid',p_date = NOW() WHERE id IN ($placeholder)");
+					// For each payment, compute paid portion and insert into ledger
+					foreach ($values as $pid) {
+						$payment = $this->getPaymentById($pid);
+						if ($payment) {
+							$paid_amount = (float)$payment->amount; // settling in full via billPay
+							$payment->balance = 0.0;
+							$payment->payment_method = 'Admin';
+							$payment->reference_number = null;
+							$this->insertPaymentHistoryEntry($payment, $paid_amount);
+						}
+					}
+
+					$request2 = $this->dbh->prepare("UPDATE payments SET status='Paid', balance = 0, p_date = NOW() WHERE id IN ($placeholder)");
 					$request2->execute($values);
 				$this->dbh->commit();
 				return true;
