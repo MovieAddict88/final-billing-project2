@@ -173,7 +173,8 @@
 
         public function fetchCustomerStatusByEmployer($employer_id)
         {
-            // Classify partially-paid customers as 'Balance' instead of 'Unpaid'.
+            // Ensure a customer's overall status prioritizes explicit Unpaid/Pending/Rejected records
+            // so they never get counted as Paid in the overview when any unpaid bill exists.
             $request = $this->dbh->prepare("
                 SELECT
                     status,
@@ -182,8 +183,18 @@
                     SELECT
                         c.id,
                         CASE
-                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
-                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments px
+                                WHERE px.customer_id = c.id AND px.status = 'Pending'
+                            ) THEN 'Pending'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments rx
+                                WHERE rx.customer_id = c.id AND rx.status = 'Rejected'
+                            ) THEN 'Rejected'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments ux
+                                WHERE ux.customer_id = c.id AND ux.status = 'Unpaid'
+                            ) THEN 'Unpaid'
                             WHEN c.dropped = 1 THEN 'Unpaid'
                             WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
                             WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) <= 0 THEN 'Unpaid'
@@ -336,7 +347,7 @@
 
         public function fetchCustomerStatusByLocation($location)
         {
-            // Classify partially-paid customers as 'Balance'.
+            // Same prioritization rules as employer aggregation to keep UI consistent.
             $request = $this->dbh->prepare("
                 SELECT
                     status,
@@ -345,8 +356,18 @@
                     SELECT
                         c.id,
                         CASE
-                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
-                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments px
+                                WHERE px.customer_id = c.id AND px.status = 'Pending'
+                            ) THEN 'Pending'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments rx
+                                WHERE rx.customer_id = c.id AND rx.status = 'Rejected'
+                            ) THEN 'Rejected'
+                            WHEN EXISTS (
+                                SELECT 1 FROM payments ux
+                                WHERE ux.customer_id = c.id AND ux.status = 'Unpaid'
+                            ) THEN 'Unpaid'
                             WHEN c.dropped = 1 THEN 'Unpaid'
                             WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
                             WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) <= 0 THEN 'Unpaid'
