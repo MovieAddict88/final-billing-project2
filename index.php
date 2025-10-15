@@ -275,10 +275,11 @@ include 'includes/footer.php';
 
                 var statusConfig = {
                     'Paid': { label: 'Paid', color: '#28a745', order: 1 },
-                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 2 },
-                    'Rejected': { label: 'Reject', color: '#dc3545', order: 3 },
-                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 4 },
-                    'Pending': { label: 'Pending', color: '#ffc107', order: 5 }
+                    'Balance': { label: 'Balance', color: '#fd7e14', order: 2 },
+                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 3 },
+                    'Rejected': { label: 'Reject', color: '#dc3545', order: 4 },
+                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 5 },
+                    'Pending': { label: 'Pending', color: '#ffc107', order: 6 }
                 };
 
                 var total = data.reduce((acc, item) => acc + parseInt(item.count), 0);
