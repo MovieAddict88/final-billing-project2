@@ -18,7 +18,7 @@
 			//Un-comment this to see a cryptogram of a user_pwd 
 			// echo session::hashuser_pwd($user_pwd);
 			// die;
-			$request = $this->dbh->prepare("SELECT user_id, user_name, user_pwd, role, location FROM kp_user WHERE user_name = ?");
+            $request = $this->dbh->prepare("SELECT user_id, user_name, user_pwd, role, location, address FROM kp_user WHERE user_name = ?");
 	        if($request->execute( array($user_name) ))
 	        {
 	        	// This is an array of objects.

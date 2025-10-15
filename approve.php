@@ -44,10 +44,11 @@
 
 	}
 
-	// Otherwise we can set a session to the admin and send him to the dashboard
-	// The session will hold the username, role, and location.
+    // Otherwise we can set a session to the admin and send him to the dashboard
+    // The session will hold the username, role, location and address.
 	session::set('admin_session', $login_data->user_name);
 	session::set('user_id', $login_data->user_id);
 	session::set('user_role', $login_data->role);
 	session::set('user_location', $login_data->location);
+    session::set('user_address', $login_data->address);
 	$commons->redirectTo(SITE_PATH.'index.php');

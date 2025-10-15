@@ -12,6 +12,7 @@ if ($user_role == 'employer') {
     $employer_id = $_SESSION['user_id'];
     $customers = $admins->fetchCustomersByEmployer($employer_id);
     $products = $admins->fetchProductsByEmployer($employer_id);
+    $packages = $admins->getPackages();
 ?>
 <h3>Employer Dashboard</h3>
 <style>
@@ -66,7 +67,10 @@ if ($user_role == 'employer') {
 <div class="row employer-stack-laptop">
     <div class="col-md-6">
         <div class="panel panel-default">
-            <div class="panel-heading">Your Assigned Customers</div>
+            <div class="panel-heading">
+                Your Assigned Customers
+                <button type="button" name="add" id="emp_add" class="btn btn-info btn-sm pull-right" data-toggle="modal" data-target="#emp_add_customer_modal">Add New Customer</button>
+            </div>
             <div class="panel-body">
                 <div class="table-responsive">
                 <table class="table table-striped table-custom">
@@ -161,6 +165,93 @@ if ($user_role == 'employer') {
         </div>
     </div>
 </div>
+
+<!-- Employer: Add Customer Modal -->
+<div id="emp_add_customer_modal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4>Add New Customer</h4>
+            </div>
+            <form action="#" method="POST" id="emp_insert_form">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="emp_full_name">Full Name</label>
+                        <input type="text" class="form-control" id="emp_full_name" name="full_name" placeholder="Full Name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_nid">NID</label>
+                        <input type="text" class="form-control" id="emp_nid" name="nid" placeholder="NID" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_address">Address</label>
+                        <input type="text" class="form-control" id="emp_address" name="address" placeholder="Address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_email">Email</label>
+                        <input type="email" class="form-control" id="emp_email" name="email" placeholder="Email Address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_conn_location">Connection Location</label>
+                        <input type="text" class="form-control" id="emp_conn_location" name="conn_location" value="<?php 
+                            $addr = $_SESSION['user_address'] ?? '';
+                            echo htmlspecialchars($addr);
+                        ?>" readonly>
+                        <p class="help-block">Auto-filled from your address</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_package">Select Package</label>
+                        <select class="form-control" name="package" id="emp_package">
+                            <?php if (!empty($packages)) { foreach ($packages as $package) { ?>
+                                <option value='<?= $package->id ?>'><?= htmlspecialchars($package->name) ?></option>
+                            <?php } } ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_ip_address">IP Address</label>
+                        <input type="text" class="form-control" id="emp_ip_address" name="ip_address" placeholder="IP Address">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_conn_type">Connection Type</label>
+                        <input type="text" class="form-control" id="emp_conn_type" name="conn_type" placeholder="Connection Type">
+                    </div>
+                    <div class="form-group">
+                        <label for="emp_contact">Contact</label>
+                        <input type="tel" class="form-control" id="emp_contact" name="contact" placeholder="Contact" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <a href="#" class="btn btn-warning" data-dismiss="modal">Cancel</a>
+                </div>
+            </form>
+    </div>
+    </div>
+    </div>
+<script type="text/javascript">
+// Employer modal submit handler
+$(function(){
+    if ($('#emp_insert_form').length) {
+        $('#emp_insert_form').on('submit', function(e){
+            e.preventDefault();
+            $.ajax({
+                url: 'customers_approve.php?p=add',
+                method: 'POST',
+                data: $('#emp_insert_form').serialize(),
+                success: function(){
+                    $('#emp_insert_form')[0].reset();
+                    $('#emp_add_customer_modal').modal('hide');
+                    location.reload();
+                },
+                error: function(){
+                    alert('Failed to add customer.');
+                }
+            });
+        });
+    }
+});
+</script>
 <?php
 } else {
     // Admin Dashboard

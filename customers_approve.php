@@ -11,6 +11,13 @@
 	// check if the form is submitted
 	$page = isset($_GET[ 'p' ])?$_GET[ 'p' ]:'';
 
+// Normalize location to a consistent casing (e.g., Cavite)
+function normalizeLocation($location) {
+    $location = trim((string)$location);
+    $location = preg_replace('/\s+/', ' ', $location);
+    return ucwords(strtolower($location));
+}
+
 	if($page == 'add'){
 			$full_name = $_POST['full_name'];
 			$nid = $_POST['nid'];
@@ -21,14 +28,27 @@
 			$ip_address = $_POST['ip_address'];
 			$conn_type = $_POST['conn_type'];
 			$contact = $_POST['contact'];
-			$employer_id = $_POST['employer'];
+			$employer_id = $_POST['employer'] ?? null;
 			$login_code = bin2hex(random_bytes(16));
+
+			// Enforce employer constraints: employer can only add within their own area
+			$current_role = $_SESSION['user_role'] ?? 'admin';
+            if ($current_role === 'employer') {
+                // Override any posted employer/location with session-bound values
+                $employer_id = $_SESSION['user_id'] ?? $employer_id;
+                // Prefer employer address if available; fallback to employer location
+                $sessionAddress = $_SESSION['user_address'] ?? null;
+                $sessionLocation = $_SESSION['user_location'] ?? null;
+                $conn_location = $sessionAddress ?: $sessionLocation ?: $conn_location;
+            }
+
+			// Normalize location for case-insensitive consistency
+			$conn_location = normalizeLocation($conn_location);
 
 			if (isset($_POST)) 
 			{
 
 				$errors = array();
-				// Check if password are the same
 				$customer_id = $admins->addCustomer($full_name, $nid, $address, $conn_location, $email, $package, $ip_address, $conn_type, $contact, $login_code, $employer_id);
 				if ($customer_id)
 				{
