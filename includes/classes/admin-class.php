@@ -804,21 +804,31 @@
 			return $request->execute([$new_status, $payment_id]);
 		}
 
-		public function rejectPayment($payment_id)
-		{
-			$payment = $this->getPaymentById($payment_id);
-			if (!$payment) {
-				return false;
-			}
+        public function rejectPayment($payment_id)
+        {
+            $payment = $this->getPaymentById($payment_id);
+            if (!$payment) {
+                return false;
+            }
 
-			if ($payment->screenshot && file_exists($payment->screenshot)) {
-				unlink($payment->screenshot);
-			}
-			$previous_balance = (float)$payment->balance + (float)$payment->gcash_name;
+            if ($payment->screenshot && file_exists($payment->screenshot)) {
+                unlink($payment->screenshot);
+            }
 
-			$request = $this->dbh->prepare("UPDATE payments SET status = 'Unpaid', balance = ?, screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
-			return $request->execute([$previous_balance, $payment_id]);
-		}
+            // Reset the bill back to its state before the pending submission
+            // Manual payments stored the pending amount temporarily in gcash_name
+            // Otherwise, reset to the full original amount so no partial is reflected
+            $restore_balance = (float)$payment->amount;
+            if ($payment->payment_method === 'Manual' && is_numeric($payment->gcash_name)) {
+                $restore_balance = (float)$payment->balance + (float)$payment->gcash_name;
+                if ($restore_balance > (float)$payment->amount) {
+                    $restore_balance = (float)$payment->amount;
+                }
+            }
+
+            $request = $this->dbh->prepare("UPDATE payments SET status = 'Rejected', balance = ?, screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
+            return $request->execute([$restore_balance, $payment_id]);
+        }
 		
 		public function getCustomerInfo($id)
 		{
