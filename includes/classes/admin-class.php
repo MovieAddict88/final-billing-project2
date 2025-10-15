@@ -375,7 +375,7 @@
 
 		public function fetchCustomerCountByLocation()
 		{
-			$request = $this->dbh->prepare("SELECT conn_location, COUNT(*) as count FROM customers GROUP BY conn_location");
+			$request = $this->dbh->prepare("SELECT conn_location, COUNT(*) as count FROM customers WHERE dropped = 0 GROUP BY conn_location");
 			if ($request->execute()) {
 				return $request->fetchAll();
 			}

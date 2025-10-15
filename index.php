@@ -449,7 +449,24 @@ include 'includes/footer.php';
                         },
                         animation: {
                             duration: 1000,
-                            easing: 'easeInOutQuart'
+                            easing: 'easeInOutQuart',
+                            onComplete: function() {
+                                var chartInstance = this.chart;
+                                var ctx = chartInstance.ctx;
+                                ctx.textAlign = 'left';
+                                ctx.font = "bold 12px Arial";
+                                ctx.fillStyle = "#333";
+
+                                this.data.datasets.forEach(function(dataset, i) {
+                                    var meta = chartInstance.controller.getDatasetMeta(i);
+                                    meta.data.forEach(function(bar, index) {
+                                        var data = dataset.data[index];
+                                        if (data > 0) {
+                                            ctx.fillText(data, bar._model.x + 5, bar._model.y + 4);
+                                        }
+                                    });
+                                });
+                            }
                         }
                     }
                 });
