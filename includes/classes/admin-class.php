@@ -711,8 +711,13 @@
 				return false;
 			}
 
-			$due_amount = ($payment->balance > 0) ? (float)$payment->balance : (float)$payment->amount;
-			$new_balance = $due_amount - (float)$amount_paid;
+            $due_amount = ($payment->balance > 0) ? (float)$payment->balance : (float)$payment->amount;
+            $paid_now = max(0.0, (float)$amount_paid);
+            // Clamp to not go below zero
+            if ($paid_now > $due_amount) {
+                $paid_now = $due_amount;
+            }
+            $new_balance = $due_amount - $paid_now;
 
 			$screenshot_path = null;
 			if ($screenshot && $screenshot['error'] == UPLOAD_ERR_OK) {
@@ -725,8 +730,10 @@
 				move_uploaded_file($screenshot['tmp_name'], $screenshot_path);
 			}
 
-			$request = $this->dbh->prepare("UPDATE payments SET status = 'Pending', balance = ?, payment_method = ?, reference_number = ?, gcash_name = ?, gcash_number = ?, screenshot = ? WHERE id = ?");
-			return $request->execute([$new_balance, $payment_method, $reference_number, $gcash_name, $gcash_number, $screenshot_path, $payment_id]);
+            // Preserve submitted amount for admin display in gcash_name when e-wallets are used
+            $submitted_amount = (is_numeric($gcash_name) ? (float)$gcash_name : $paid_now);
+            $request = $this->dbh->prepare("UPDATE payments SET status = 'Pending', balance = ?, payment_method = ?, reference_number = ?, gcash_name = ?, gcash_number = ?, screenshot = ? WHERE id = ?");
+            return $request->execute([$new_balance, $payment_method, $reference_number, $submitted_amount, $gcash_number, $screenshot_path, $payment_id]);
 		}
 
 		public function processManualPayment($customer_id, $employer_id, $amount, $reference_number, $selected_bills, $screenshot = null)
@@ -747,7 +754,7 @@
 
 				$remaining_amount = (float)$amount;
 
-				foreach ($selected_bills as $bill_id) {
+                foreach ($selected_bills as $bill_id) {
 					if ($remaining_amount <= 0) {
 						break;
 					}
@@ -757,7 +764,7 @@
 						continue;
 					}
 
-					$due_amount = ($bill->balance > 0) ? (float)$bill->balance : (float)$bill->amount;
+                    $due_amount = ($bill->balance > 0) ? (float)$bill->balance : (float)$bill->amount;
 
 					if ($remaining_amount >= $due_amount) {
 						$new_balance = 0;
@@ -768,7 +775,7 @@
 					}
 
 					$request = $this->dbh->prepare(
-						"UPDATE payments SET status = 'Pending', balance = ?, payment_method = 'Manual', employer_id = ?, reference_number = ?, screenshot = ?, gcash_name = ? WHERE id = ?"
+                        "UPDATE payments SET status = 'Pending', balance = ?, payment_method = 'Manual', employer_id = ?, reference_number = ?, screenshot = ?, gcash_name = ? WHERE id = ?"
 					);
 					$request->execute([
 						$new_balance,

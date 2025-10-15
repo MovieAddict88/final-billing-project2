@@ -56,10 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <hr>
                     <h4>Payment Information</h4>
                     <p><strong>Month:</strong> <?php echo $payment->r_month; ?></p>
-                    <p><strong>Initial Paid:</strong> <?php echo number_format((float)($payment->amount - $payment->balance), 2); ?></p>
-                    <?php if ($payment->balance > 0): ?>
-                        <p><strong>Balance:</strong> <?php echo $payment->balance; ?></p>
+                    <?php
+                        $submitted_amount = null;
+                        if (is_numeric($payment->gcash_name)) {
+                            $submitted_amount = (float)$payment->gcash_name;
+                        }
+                    ?>
+                    <?php if ($submitted_amount !== null): ?>
+                        <p><strong>Submitted Amount:</strong> <?php echo number_format($submitted_amount, 2); ?></p>
                     <?php endif; ?>
+                    <p><strong>Total Paid So Far:</strong> <?php echo number_format((float)($payment->amount - $payment->balance), 2); ?></p>
+                    <p><strong>New Balance:</strong> <?php echo number_format((float)$payment->balance, 2); ?></p>
                     <p><strong>Payment Method:</strong> <?php echo $payment->payment_method; ?></p>
                     <?php if (in_array($payment->payment_method, ['GCash','PayMaya']) && !empty($payment->gcash_number)): ?>
                         <p><strong>Account Number:</strong> <?php echo htmlspecialchars($payment->gcash_number); ?></p>
@@ -70,10 +77,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p><strong>Paid by Employer:</strong> <?php echo htmlspecialchars($employer_name); ?></p>
                         <?php endif;
                     endif; ?>
-                    <?php if ($payment->payment_method === 'GCash'): ?>
-                        <p><strong>GCash Name:</strong> <?php echo $payment->gcash_name; ?></p>
-                        <p><strong>GCash Number:</strong> <?php echo $payment->gcash_number; ?></p>
-                    <?php endif; ?>
                     <p><strong>Reference Number:</strong> <?php echo $payment->reference_number; ?></p>
                     <?php if ($payment->screenshot && file_exists($payment->screenshot)): ?>
                         <p><strong>Screenshot:</strong></p>
