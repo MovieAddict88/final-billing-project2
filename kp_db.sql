@@ -201,6 +201,27 @@ CREATE TABLE `payments` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `payment_history`
+--
+
+CREATE TABLE IF NOT EXISTS `payment_history` (
+  `id` int(11) NOT NULL,
+  `payment_id` int(10) NOT NULL,
+  `customer_id` int(11) NOT NULL,
+  `employer_id` int(11) DEFAULT NULL,
+  `package_id` int(11) DEFAULT NULL,
+  `r_month` varchar(255) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `paid_amount` decimal(10,2) NOT NULL,
+  `balance_after` decimal(10,2) NOT NULL,
+  `payment_method` varchar(50) DEFAULT NULL,
+  `reference_number` varchar(255) DEFAULT NULL,
+  `paid_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `product`
 --
 
@@ -333,6 +354,19 @@ ALTER TABLE `packages`
 --
 ALTER TABLE `payments`
   MODIFY `id` int(10) NOT NULL AUTO_INCREMENT;
+--
+-- Indexes and AUTO_INCREMENT for table `payment_history`
+--
+ALTER TABLE `payment_history`
+  ADD PRIMARY KEY (`id`);
+
+ALTER TABLE `payment_history`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+-- Additional indexes for performance
+ALTER TABLE `payment_history`
+  ADD KEY `idx_payment_id` (`payment_id`),
+  ADD KEY `idx_customer_id_paidat` (`customer_id`, `paid_at`);
 --
 -- AUTO_INCREMENT for table `product`
 --
