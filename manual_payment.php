@@ -18,7 +18,7 @@ if (!isset($_GET['customer'])) {
 
 $customer_id = $_GET['customer'];
 $customer = $admins->getCustomerInfo($customer_id);
-$unpaid_bills = $admins->fetchAllIndividualBill($customer_id, 'Unpaid');
+$unpaid_bills = $admins->fetchAllIndividualBill($customer_id); // include all; we'll filter by balance > 0
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $employer_id = $_SESSION['user_id'];
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     <form action="" method="POST" enctype="multipart/form-data">
                         <input type="hidden" name="customer" value="<?php echo $customer_id; ?>">
-                        <h4>Unpaid Bills</h4>
+                        <h4>Open Balances</h4>
                         <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -66,12 +66,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </thead>
                             <tbody>
                                 <?php foreach ($unpaid_bills as $bill): ?>
-                                    <?php $due_amount = ($bill->balance > 0) ? $bill->balance : $bill->amount; ?>
+                                    <?php if ((float)$bill->balance <= 0) continue; ?>
+                                    <?php $due_amount = (float)$bill->balance; ?>
+                                    <?php $is_pending = ($bill->status === 'Pending'); ?>
                                     <tr>
-                                        <td><input type="checkbox" name="bills[]" value="<?php echo $bill->id; ?>" data-balance="<?php echo htmlspecialchars($due_amount); ?>"></td>
-                                        <td><?php echo htmlspecialchars($bill->r_month); ?></td>
+                                        <td>
+                                            <input type="checkbox" name="bills[]" value="<?php echo $bill->id; ?>" data-balance="<?php echo htmlspecialchars(number_format($due_amount, 2, '.', '')); ?>" <?php echo $is_pending ? 'disabled' : ''; ?>>
+                                        </td>
+                                        <td><?php echo htmlspecialchars($bill->r_month); ?><?php if ($is_pending): ?> <span class="badge badge-warning">Pending approval</span><?php endif; ?></td>
                                         <td><?php echo htmlspecialchars(number_format((float)$bill->amount, 2)); ?></td>
-                                        <td><?php echo htmlspecialchars(number_format((float)$due_amount, 2)); ?></td>
+                                        <td><?php echo htmlspecialchars(number_format($due_amount, 2)); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -104,7 +108,7 @@ require_once 'includes/customer_footer.php';
 ?>
 <script>
     (function() {
-        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="bills[]"]');
+        var checkboxes = document.querySelectorAll('input[type="checkbox"][name="bills[]"]:not([disabled])');
         var amountInput = document.getElementById('amount');
 
         function updateAmountFromSelection() {
@@ -128,8 +132,9 @@ require_once 'includes/customer_footer.php';
         });
 
         // If exactly one unpaid bill, pre-select it and prefill amount with its remaining balance
-        if (checkboxes.length === 1) {
-            checkboxes[0].checked = true;
+        var selectable = Array.prototype.slice.call(checkboxes);
+        if (selectable.length === 1) {
+            selectable[0].checked = true;
             updateAmountFromSelection();
         }
     })();
