@@ -33,11 +33,14 @@ function normalizeLocation($location) {
 
 			// Enforce employer constraints: employer can only add within their own area
 			$current_role = $_SESSION['user_role'] ?? 'admin';
-			if ($current_role === 'employer') {
-				// Override any posted employer/location with session-bound values
-				$employer_id = $_SESSION['user_id'] ?? $employer_id;
-				$conn_location = $_SESSION['user_location'] ?? $conn_location;
-			}
+            if ($current_role === 'employer') {
+                // Override any posted employer/location with session-bound values
+                $employer_id = $_SESSION['user_id'] ?? $employer_id;
+                // Prefer employer address if available; fallback to employer location
+                $sessionAddress = $_SESSION['user_address'] ?? null;
+                $sessionLocation = $_SESSION['user_location'] ?? null;
+                $conn_location = $sessionAddress ?: $sessionLocation ?: $conn_location;
+            }
 
 			// Normalize location for case-insensitive consistency
 			$conn_location = normalizeLocation($conn_location);

@@ -194,7 +194,11 @@ if ($user_role == 'employer') {
                     </div>
                     <div class="form-group">
                         <label for="emp_conn_location">Connection Location</label>
-                        <input type="text" class="form-control" id="emp_conn_location" name="conn_location" value="<?php echo ucwords(strtolower($_SESSION['user_location'] ?? '')); ?>" readonly>
+                        <input type="text" class="form-control" id="emp_conn_location" name="conn_location" value="<?php 
+                            $addr = $_SESSION['user_address'] ?? '';
+                            echo htmlspecialchars($addr);
+                        ?>" readonly>
+                        <p class="help-block">Auto-filled from your address</p>
                     </div>
                     <div class="form-group">
                         <label for="emp_package">Select Package</label>
