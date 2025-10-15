@@ -68,8 +68,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <p><strong>Total Paid So Far:</strong> <?php echo number_format((float)($payment->amount - $payment->balance), 2); ?></p>
                     <p><strong>New Balance:</strong> <?php echo number_format((float)$payment->balance, 2); ?></p>
                     <p><strong>Payment Method:</strong> <?php echo $payment->payment_method; ?></p>
-                    <?php if (in_array($payment->payment_method, ['GCash','PayMaya']) && !empty($payment->gcash_number)): ?>
-                        <p><strong>Account Number:</strong> <?php echo htmlspecialchars($payment->gcash_number); ?></p>
+                    <?php if (in_array($payment->payment_method, ['GCash','PayMaya']) && !empty($payment->gcash_number)):
+                        $wallet = json_decode($payment->gcash_number, true);
+                        $wallet_name = is_array($wallet) && isset($wallet['name']) ? $wallet['name'] : null;
+                        $wallet_number = is_array($wallet) && isset($wallet['number']) ? $wallet['number'] : null;
+                        if (!$wallet_name && !$wallet_number) { // fallback for legacy plain string
+                            $wallet_name = null;
+                            $wallet_number = $payment->gcash_number;
+                        }
+                    ?>
+                        <?php if ($wallet_name): ?><p><strong>Account Name:</strong> <?php echo htmlspecialchars($wallet_name); ?></p><?php endif; ?>
+                        <?php if ($wallet_number): ?><p><strong>Account Number:</strong> <?php echo htmlspecialchars($wallet_number); ?></p><?php endif; ?>
                     <?php endif; ?>
                     <?php if ($payment->payment_method === 'Manual' && !empty($payment->employer_id)):
                         $employer_name = $admins->getEmployerNameById($payment->employer_id);

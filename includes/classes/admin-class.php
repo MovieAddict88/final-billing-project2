@@ -171,35 +171,44 @@
 			return null;
 		}
 
-		public function fetchCustomerStatusByEmployer($employer_id)
-		{
-			$request = $this->dbh->prepare("
-				SELECT
-					status,
-					COUNT(*) as count
-				FROM (
-					SELECT
-						c.id,
-						CASE
-							WHEN c.dropped = 1 OR EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Unpaid') THEN 'Unpaid'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Pending') THEN 'Pending'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Rejected') THEN 'Rejected'
-							WHEN NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id) THEN 'Prospects'
-							ELSE 'Paid'
-						END as status
-					FROM
-						customers c
-					WHERE
-						c.employer_id = ?
-				) as customer_status
-				GROUP BY
-					status
-			");
-			if ($request->execute([$employer_id])) {
-				return $request->fetchAll();
-			}
-			return false;
-		}
+        public function fetchCustomerStatusByEmployer($employer_id)
+        {
+            // Classify partially-paid customers as 'Balance' instead of 'Unpaid'.
+            $request = $this->dbh->prepare("
+                SELECT
+                    status,
+                    COUNT(*) as count
+                FROM (
+                    SELECT
+                        c.id,
+                        CASE
+                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
+                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN c.dropped = 1 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
+                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) <= 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Prospects'
+                            ELSE 'Prospects'
+                        END as status
+                    FROM
+                        customers c
+                    LEFT JOIN (
+                        SELECT customer_id, SUM(amount - balance) AS total_paid, SUM(balance) AS total_balance
+                        FROM payments
+                        GROUP BY customer_id
+                    ) p ON p.customer_id = c.id
+                    WHERE
+                        c.employer_id = ?
+                ) as customer_status
+                GROUP BY
+                    status
+            ");
+            if ($request->execute([$employer_id])) {
+                return $request->fetchAll();
+            }
+            return false;
+        }
 
 		public function fetchProductsByEmployer($employer_id)
 		{
@@ -325,35 +334,44 @@
 			return false;
 		}
 
-		public function fetchCustomerStatusByLocation($location)
-		{
-			$request = $this->dbh->prepare("
-				SELECT
-					status,
-					COUNT(*) as count
-				FROM (
-					SELECT
-						c.id,
-						CASE
-							WHEN c.dropped = 1 OR EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Unpaid') THEN 'Unpaid'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Pending') THEN 'Pending'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Rejected') THEN 'Rejected'
-							WHEN NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id) THEN 'Prospects'
-							ELSE 'Paid'
-						END as status
-					FROM
-						customers c
-					WHERE
-						? LIKE CONCAT('%', c.conn_location, '%')
-				) as customer_status
-				GROUP BY
-					status
-			");
-			if ($request->execute([$location])) {
-				return $request->fetchAll();
-			}
-			return false;
-		}
+        public function fetchCustomerStatusByLocation($location)
+        {
+            // Classify partially-paid customers as 'Balance'.
+            $request = $this->dbh->prepare("
+                SELECT
+                    status,
+                    COUNT(*) as count
+                FROM (
+                    SELECT
+                        c.id,
+                        CASE
+                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
+                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN c.dropped = 1 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
+                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) <= 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Prospects'
+                            ELSE 'Prospects'
+                        END as status
+                    FROM
+                        customers c
+                    LEFT JOIN (
+                        SELECT customer_id, SUM(amount - balance) AS total_paid, SUM(balance) AS total_balance
+                        FROM payments
+                        GROUP BY customer_id
+                    ) p ON p.customer_id = c.id
+                    WHERE
+                        ? LIKE CONCAT('%', c.conn_location, '%')
+                ) as customer_status
+                GROUP BY
+                    status
+            ");
+            if ($request->execute([$location])) {
+                return $request->fetchAll();
+            }
+            return false;
+        }
 
 		public function fetchCustomerCountByLocation()
 		{
