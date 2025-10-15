@@ -361,7 +361,11 @@ include 'includes/footer.php';
                 }
 
                 var locations = data.map(item => item.conn_location);
-                var counts = data.map(item => item.count);
+                var counts = data.map(item => Number(item.count) || 0);
+
+                // Determine a suggested max for x-axis to create space for value labels
+                var maxValue = counts.length ? Math.max.apply(null, counts) : 0;
+                var suggestedMax = maxValue + Math.max(1, Math.ceil(maxValue * 0.10));
 
                 var professionalColors = [
                     'rgba(54, 162, 235, 0.6)',
@@ -398,6 +402,9 @@ include 'includes/footer.php';
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: {
+                            padding: { right: 40 } // room for value labels
+                        },
                         legend: {
                             display: false
                         },
@@ -412,6 +419,8 @@ include 'includes/footer.php';
                                 ticks: {
                                     beginAtZero: true,
                                     precision: 0,
+                                    stepSize: 1,
+                                    suggestedMax: suggestedMax,
                                     fontColor: '#333'
                                 },
                                 gridLines: {
@@ -450,7 +459,30 @@ include 'includes/footer.php';
                         animation: {
                             duration: 1000,
                             easing: 'easeInOutQuart'
-                        }
+                        },
+                        // Inline plugin to render value labels at end of each bar
+                        plugins: [{
+                            afterDatasetsDraw: function(chart) {
+                                var ctx = chart.ctx;
+                                var dataset = chart.data.datasets[0];
+                                if (!dataset) return;
+                                var meta = chart.getDatasetMeta(0);
+                                ctx.save();
+                                var defaultFont = (Chart.defaults.global && Chart.defaults.global.defaultFontFamily) || 'Arial';
+                                ctx.font = 'bold 12px ' + defaultFont;
+                                ctx.fillStyle = '#333';
+                                ctx.textAlign = 'left';
+                                ctx.textBaseline = 'middle';
+                                meta.data.forEach(function(bar, index) {
+                                    var value = dataset.data[index];
+                                    if (value == null) return;
+                                    var x = bar._model && bar._model.x ? bar._model.x : bar._view.x;
+                                    var y = bar._model && bar._model.y ? bar._model.y : bar._view.y;
+                                    ctx.fillText(String(value), x + 6, y);
+                                });
+                                ctx.restore();
+                            }
+                        }]
                     }
                 });
                 var chartHeight = 50 + data.length * 30;
