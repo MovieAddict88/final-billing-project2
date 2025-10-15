@@ -151,6 +151,48 @@
         </table>
         </div>
     </div>
+    <hr>
+    <?php
+        // Invoice Payment Ledger section for receipt view
+        $paymentLedger = $admins->fetchPaymentHistoryByCustomer($id);
+    ?>
+    <h3>Invoice Payment Ledger</h3>
+    <div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="thead-inverse">
+            <tr>
+                <th>Time</th>
+                <th>Billing Month</th>
+                <th>Package</th>
+                <th>Amount</th>
+                <th>Paid Amount</th>
+                <th>Balance</th>
+                <th>Payment Method</th>
+                <th>Employer</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if ($paymentLedger && count($paymentLedger) > 0): ?>
+                <?php foreach ($paymentLedger as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))) ?></td>
+                        <td><?= htmlspecialchars($row->r_month) ?></td>
+                        <td><?= htmlspecialchars($row->package_name ?: 'N/A') ?></td>
+                        <td><?= number_format((float)$row->amount, 2) ?></td>
+                        <td><?= number_format((float)$row->paid_amount, 2) ?></td>
+                        <td><?= number_format((float)$row->balance_after, 2) ?></td>
+                        <td><?= htmlspecialchars($row->payment_method ?: 'N/A') ?></td>
+                        <td><?= htmlspecialchars($row->employer_name ?: 'Admin') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="8" class="text-center">No payment ledger yet.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+    </div>
          <p class="amount-due">TOTAL AMOUNT DUE: <td><?=$bills->bill_amount?></td>
 
    <h2><strong>We appreciate your prompt payment and value as a customer.</h2><br></br>

@@ -362,6 +362,11 @@ ALTER TABLE `payment_history`
 
 ALTER TABLE `payment_history`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+-- Additional indexes for performance
+ALTER TABLE `payment_history`
+  ADD KEY `idx_payment_id` (`payment_id`),
+  ADD KEY `idx_customer_id_paidat` (`customer_id`, `paid_at`);
 --
 -- AUTO_INCREMENT for table `product`
 --
