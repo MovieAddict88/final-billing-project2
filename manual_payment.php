@@ -18,7 +18,7 @@ if (!isset($_GET['customer'])) {
 
 $customer_id = $_GET['customer'];
 $customer = $admins->getCustomerInfo($customer_id);
-$unpaid_bills = $admins->fetchAllIndividualBill($customer_id); // include all; we'll filter by balance > 0
+$unpaid_bills = $admins->fetchAllIndividualBill($customer_id) ?: []; // ensure iterable even on query failure
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $employer_id = $_SESSION['user_id'];
@@ -66,9 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </thead>
                             <tbody>
                                 <?php foreach ($unpaid_bills as $bill): ?>
-                                    <?php if ((float)$bill->balance <= 0) continue; ?>
-                                    <?php $due_amount = (float)$bill->balance; ?>
-                                    <?php $is_pending = ($bill->status === 'Pending'); ?>
+                                    <?php
+                                        // Compute the real due amount. Some unpaid bills store NULL/0 in balance.
+                                        $has_positive_balance = is_numeric($bill->balance) && (float)$bill->balance > 0;
+                                        $due_amount = $has_positive_balance ? (float)$bill->balance : (float)$bill->amount;
+                                        $is_pending = ($bill->status === 'Pending');
+
+                                        // Skip rows that are fully paid or otherwise have no amount due.
+                                        if ($bill->status === 'Paid' || $due_amount <= 0) {
+                                            continue;
+                                        }
+                                    ?>
                                     <tr>
                                         <td>
                                             <input type="checkbox" name="bills[]" value="<?php echo $bill->id; ?>" data-balance="<?php echo htmlspecialchars(number_format($due_amount, 2, '.', '')); ?>" <?php echo $is_pending ? 'disabled' : ''; ?>>
