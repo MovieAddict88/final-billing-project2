@@ -909,15 +909,33 @@
                 unlink($payment->screenshot);
             }
 
-            // Reset the bill back to its state before the pending submission
-            // Manual payments stored the pending amount temporarily in gcash_name
-            // Otherwise, reset to the full original amount so no partial is reflected
-            $restore_balance = (float)$payment->amount;
-            if ($payment->payment_method === 'Manual' && is_numeric($payment->gcash_name)) {
-                $restore_balance = (float)$payment->balance + (float)$payment->gcash_name;
-                if ($restore_balance > (float)$payment->amount) {
-                    $restore_balance = (float)$payment->amount;
-                }
+            // Restore balance to the state BEFORE the pending submission.
+            // The submitted amount for this pending entry is stored temporarily
+            // in gcash_name (for both Manual and e-wallet payments). If not
+            // available, derive it from the ledger to avoid resetting prior
+            // partial payments.
+            $submitted_amount = 0.0;
+            if (isset($payment->gcash_name) && is_numeric($payment->gcash_name)) {
+                $submitted_amount = (float)$payment->gcash_name;
+            } else {
+                // Fallback: compute amount included in this pending update that
+                // is not yet recorded in payment_history.
+                $sumRequest = $this->dbh->prepare("SELECT COALESCE(SUM(paid_amount),0) AS total_recorded FROM payment_history WHERE payment_id = ?");
+                $sumRequest->execute([$payment_id]);
+                $row = $sumRequest->fetch();
+                $total_recorded = $row ? (float)$row->total_recorded : 0.0;
+                $already_paid_total = (float)$payment->amount - (float)$payment->balance; // includes the pending part
+                $submitted_amount = max(0.0, $already_paid_total - $total_recorded);
+            }
+
+            // Current balance is (previous_due - submitted_amount). Add back the
+            // submitted amount to restore the previous due, and clamp within [0, amount].
+            $restore_balance = (float)$payment->balance + $submitted_amount;
+            if ($restore_balance > (float)$payment->amount) {
+                $restore_balance = (float)$payment->amount;
+            }
+            if ($restore_balance < 0) {
+                $restore_balance = 0.0;
             }
 
             $request = $this->dbh->prepare("UPDATE payments SET status = 'Rejected', balance = ?, screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
