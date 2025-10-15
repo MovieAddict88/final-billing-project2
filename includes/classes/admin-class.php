@@ -186,7 +186,7 @@
                             WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
                             WHEN c.dropped = 1 THEN 'Unpaid'
                             WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
-                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) <= 0 THEN 'Unpaid'
+                            WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Unpaid') THEN 'Unpaid'
                             WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
                             WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Prospects'
                             ELSE 'Prospects'
