@@ -182,23 +182,9 @@
 					<td class="search"><?=$customer->conn_type?></td>
                     <td class="search">
                         <?php 
-                            $status = $admins->getCustomerStatus($customer->id);
-                            $status_class = '';
-                            switch($status) {
-                                case 'Paid':
-                                    $status_class = 'label-success';
-                                    break;
-                                case 'Balance':
-                                    $status_class = 'label-warning';
-                                    break;
-                                case 'Unpaid':
-                                    $status_class = 'label-danger';
-                                    break;
-                                default:
-                                    $status_class = 'label-default';
-                            }
+                            $status_display = $admins->getCustomerStatusDisplay($customer->id);
                         ?>
-                        <span class="label <?=$status_class?>"><?=$status?></span>
+                        <span class="label <?=$status_display['class']?>"><?=$status_display['status']?></span>
                     </td>
                     <td class="search"><?=number_format($customer->total_paid, 2)?></td>
                     <td class="search"><?=number_format($customer->total_balance, 2)?></td>

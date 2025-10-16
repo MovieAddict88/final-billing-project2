@@ -1483,6 +1483,42 @@
 		// }
 
 
+		/**
+		 * Get consistent status class for customer status display
+		 * Returns appropriate Bootstrap label class
+		 */
+		public function getStatusClass($status)
+		{
+			switch($status) {
+				case 'Paid':
+					return 'label-success';
+				case 'Balance':
+					return 'label-warning';
+				case 'Unpaid':
+					return 'label-danger';
+				case 'Pending':
+					return 'label-info';
+				case 'Rejected':
+					return 'label-danger';
+				default:
+					return 'label-default';
+			}
+		}
+
+		/**
+		 * Get customer status with consistent display
+		 * Returns array with status and class
+		 */
+		public function getCustomerStatusDisplay($customer_id)
+		{
+			$status = $this->getCustomerStatus($customer_id);
+			$class = $this->getStatusClass($status);
+			return [
+				'status' => $status,
+				'class' => $class
+			];
+		}
+
 		// /*production to stocking table*/
 		// public function insertProductionData( $proselect, $sold, $date, $waste, $return )
 		// {	

@@ -49,3 +49,159 @@
     overflow-x: auto;
     overflow-y: visible;
 }
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+    /* Stack employer dashboard columns on mobile */
+    .employer-stack-laptop > [class*="col-md-"] {
+        float: none !important;
+        width: 100% !important;
+        margin-bottom: 15px;
+    }
+    
+    /* Make action buttons stack vertically on mobile */
+    .action-btn {
+        width: 100% !important;
+        margin-bottom: 5px;
+        display: block;
+    }
+    
+    /* Improve table readability on mobile */
+    .table th,
+    .table td {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+    
+    /* Make status labels more prominent on mobile */
+    .label {
+        font-size: 10px;
+        padding: 2px 6px;
+        display: inline-block;
+        margin: 1px 0;
+    }
+    
+    /* Ensure search inputs are full width on mobile */
+    .form-inline .form-group {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .form-inline .input-group {
+        width: 100%;
+    }
+    
+    /* Stack form elements vertically on mobile */
+    .form-inline {
+        display: block;
+    }
+    
+    /* Improve modal responsiveness on mobile */
+    .modal-dialog {
+        margin: 10px;
+        width: calc(100% - 20px);
+    }
+}
+
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+    /* Reduce padding on medium screens */
+    .table th,
+    .table td {
+        padding: 10px 6px;
+        font-size: 13px;
+    }
+    
+    /* Make action buttons smaller on tablets */
+    .action-btn {
+        width: 70px !important;
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1200px) {
+    /* Ensure tables don't get too wide on large screens */
+    .table-responsive {
+        max-width: 100%;
+    }
+    
+    /* Improve spacing on large screens */
+    .panel-body {
+        padding: 20px;
+    }
+}
+
+/* Consistent table styling across all pages */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Consistent button styling in tables */
+.table .btn {
+    margin: 1px;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+/* Status label improvements */
+.label {
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Ensure consistent spacing in panels */
+.panel-heading {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.panel-body {
+    padding: 15px;
+}
+
+/* Improve form styling consistency */
+.form-inline .form-group {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+/* Search input improvements */
+.input-group-addon {
+    background-color: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* Modal improvements for better responsiveness */
+.modal-content {
+    border-radius: 6px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    border-bottom: 1px solid #e5e5e5;
+    padding: 15px 20px;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    border-top: 1px solid #e5e5e5;
+    padding: 15px 20px;
+}

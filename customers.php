@@ -49,7 +49,6 @@
 				} ?>
 			</div>
                 <div class="table-responsive">
-				<div class="table-responsive">
 				<table class="table table-striped" id="grid-basic">
 					<thead class="thead-inverse">
 						<tr class="info">
@@ -114,7 +113,7 @@
 										<select class="form-control form-control-sm" name="package" id="package">
 											<?php 
 											$packages = $admins->getPackages();
-											if (isset($packages) && sizeof($packages) > 0){ 
+											if (isset($packages) && count($packages) > 0){ 
 												foreach ($packages as $package) { ?>
 												<option value='<?=$package->id?>'><?=$package->name?></option>
 											<?php }} ?>
@@ -126,7 +125,7 @@
 											<option value=''>Select an employer</option>
 											<?php
 											$employers = $admins->getEmployers();
-											if (isset($employers) && sizeof($employers) > 0){
+											if (isset($employers) && count($employers) > 0){
 												foreach ($employers as $employer) { ?>
 												<option value='<?=$employer->user_id?>'><?=$employer->full_name?></option>
 											<?php }} ?>
