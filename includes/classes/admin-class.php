@@ -1210,8 +1210,8 @@
 	// Bill generation of a Month
 		public function billGenerate($customer_id, $r_month, $amount){
 			try {
-				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount) VALUES(?,?,?)");
-				return $request->execute([$customer_id, $r_month, $amount]);
+				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount, balance, status) VALUES(?,?,?,?,?)");
+				return $request->execute([$customer_id, $r_month, $amount, $amount, 'Unpaid']);
 			} catch (Exception $e) {
 				return false;
 			}
