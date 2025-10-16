@@ -25,11 +25,11 @@
 				<form class="form-inline pull-right">
 				  <div class="form-group">
 				    <label class="sr-only" for="search">Search for</label>
-				    <div class="input-group">
-				      <div class="input-group-addon"><span class="glyphicon glyphicon-search" aria-hidden="true"></span></div>
-				      <input type="text" class="form-control" id="search" placeholder="Type a name">
-				      <div class="input-group-addon"></div>
-				    </div>
+                    <div class="input-group">
+                      <div class="input-group-addon"><span class="glyphicon glyphicon-search" aria-hidden="true"></span></div>
+                      <input type="text" class="form-control" id="search" placeholder="Type a name" list="global-suggestions" autocomplete="off">
+                      <div class="input-group-addon"></div>
+                    </div>
 				  </div>
 				  <!-- <button type="submit" class="btn btn-info">Search</button> -->
 				</form>
@@ -123,15 +123,16 @@
 				}
 			});
 		});
-		function viewData() {
-			$.ajax({
-				method: "GET",
-				url:"product_approve.php",
-				success: function(data){
-					$('tbody').html(data);
-				}
-			});
-		}
+        function viewData(page = 1, q = '', limit = 10) {
+            $.ajax({
+                method: "GET",
+                url:"product_approve.php",
+                data: { page: page, q: q, limit: limit },
+                success: function(data){
+                    $('tbody').html(data);
+                }
+            });
+        }
 		function delData(del_id){
 			var id = del_id;
 			$.ajax({
@@ -162,7 +163,7 @@
 				}
 			});
 		}
-		window.onload=viewData();
+        window.onload=function(){ viewData(); };
 	</script>
 
 	<script type="text/javascript">
@@ -170,22 +171,29 @@
 	    grid = $('#product_data');
 
 	    // handle search fields of members key up event
-	    $('#search').keyup(function(e) { 
-	      text = $(this).val(); // grab search term
+        var typingTimer; var lastQ='';
+        $('#search').on('input', function(){
+          var q = $(this).val();
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(function(){ lastQ=q; viewData(1, q); }, 250);
+          // suggestions
+          if (q && q.length >= 1) {
+            $.get('search_suggestions.php', { type: 'products', q: q }, function(items){
+              var dl = $('#global-suggestions'); dl.empty();
+              (items || []).forEach(function(it){ dl.append('<option value="'+ (it.value || '') +'">'); });
+            }, 'json');
+          }
+        });
 
-	      if(text.length > 1) {
-	        grid.find('tr:has(td)').hide(); // hide data rows, leave header row showing
-
-	        // iterate through all grid rows
-	        grid.find('tr').each(function(i) {
-	          // check to see if search term matches Name column
-	          if($(this).find('.search').text().toUpperCase().match(text.toUpperCase()))
-	            $(this).show(); // show matching row
-	        });
-	      }
-	      else 
-	        grid.find('tr').show(); // if no matching name is found, show all rows
-	    });
+        $('#product_data').on('click', '.page-prev, .page-next', function(){
+          var row = $('.pagination-row');
+          var page = parseInt(row.data('page')) || 1;
+          var total = parseInt(row.data('total')) || 0;
+          var limit = parseInt(row.data('limit')) || 10;
+          var q = row.data('query') || '';
+          if ($(this).hasClass('page-prev') && page > 1) page--; else if ($(this).hasClass('page-next')) page++;
+          viewData(page, q, limit);
+        });
 	    
 	  }); 
 		function categories() {

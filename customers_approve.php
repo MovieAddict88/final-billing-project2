@@ -70,11 +70,20 @@
 			$commons->redirectTo(SITE_PATH.'customers.php');
 		}
 
-	}else{
-		$customers = $admins->fetchCustomer();
-		$employers = $admins->getEmployers();
-		if (isset($customers) && sizeof($customers) > 0) {
-			foreach ($customers as $customer){
+    }else{
+        // Pagination and search params
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 10;
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+        $offset = ($page - 1) * $limit;
+
+        $customers = $admins->fetchCustomersPage($offset, $limit, $q);
+        $total = $admins->countCustomers($q);
+        $totalPages = ($limit > 0) ? (int)ceil($total / $limit) : 1;
+        $employers = $admins->getEmployers();
+        if (isset($customers) && sizeof($customers) > 0) {
+            foreach ($customers as $customer){
 				$packageInfo = $admins->getPackageInfo($customer->package_id);
 				$package_name = $packageInfo->name;
 				 ?>
@@ -171,12 +180,45 @@
 					<td class="search"><?=$customer->email?></td>
 					<td class="search"><?=$customer->contact?></td>
 					<td class="search"><?=$customer->conn_type?></td>
+                    <td class="search">
+                        <?php 
+                            $status = $admins->getCustomerStatus($customer->id);
+                            $status_class = '';
+                            switch($status) {
+                                case 'Paid':
+                                    $status_class = 'label-success';
+                                    break;
+                                case 'Balance':
+                                    $status_class = 'label-warning';
+                                    break;
+                                case 'Unpaid':
+                                    $status_class = 'label-danger';
+                                    break;
+                                default:
+                                    $status_class = 'label-default';
+                            }
+                        ?>
+                        <span class="label <?=$status_class?>"><?=$status?></span>
+                    </td>
                     <td class="search"><?=number_format($customer->total_paid, 2)?></td>
                     <td class="search"><?=number_format($customer->total_balance, 2)?></td>
 					<td class="search"><?=$customer->login_code?></td>
 				</tr>
-			<?php
-			}
-		}
-	}
+            <?php
+            }
+            // Pagination controls row
+            $prevDisabled = ($page <= 1) ? 'disabled' : '';
+            $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+            $colspan = 15; // number of table columns
+            ?>
+            <tr class="pagination-row" data-page="<?=$page?>" data-total="<?=$total?>" data-limit="<?=$limit?>" data-query="<?=htmlspecialchars($q)?>">
+                <td colspan="<?=$colspan?>" class="text-center">
+                    <button class="btn btn-default btn-sm page-prev" <?=$prevDisabled?>>Prev</button>
+                    <span class="mx-2">Page <?=$page?> of <?=$totalPages?></span>
+                    <button class="btn btn-default btn-sm page-next" <?=$nextDisabled?>>Next</button>
+                </td>
+            </tr>
+            <?php
+        }
+    }
 ?>

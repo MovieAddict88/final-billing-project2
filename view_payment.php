@@ -56,13 +56,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <hr>
                     <h4>Payment Information</h4>
                     <p><strong>Month:</strong> <?php echo $payment->r_month; ?></p>
-                    <p><strong>Initial Paid:</strong> <?php echo number_format((float)($payment->amount - $payment->balance), 2); ?></p>
-                    <?php if ($payment->balance > 0): ?>
-                        <p><strong>Balance:</strong> <?php echo $payment->balance; ?></p>
+                    <?php
+                        $submitted_amount = null;
+                        if (is_numeric($payment->gcash_name)) {
+                            $submitted_amount = (float)$payment->gcash_name;
+                        }
+                    ?>
+                    <?php if ($submitted_amount !== null): ?>
+                        <p><strong>Submitted Amount:</strong> <?php echo number_format($submitted_amount, 2); ?></p>
                     <?php endif; ?>
+                    <p><strong>Total Paid So Far:</strong> <?php echo number_format((float)($payment->amount - $payment->balance), 2); ?></p>
+                    <p><strong>New Balance:</strong> <?php echo number_format((float)$payment->balance, 2); ?></p>
                     <p><strong>Payment Method:</strong> <?php echo $payment->payment_method; ?></p>
-                    <?php if (in_array($payment->payment_method, ['GCash','PayMaya']) && !empty($payment->gcash_number)): ?>
-                        <p><strong>Account Number:</strong> <?php echo htmlspecialchars($payment->gcash_number); ?></p>
+                    <?php if (in_array($payment->payment_method, ['GCash','PayMaya']) && !empty($payment->gcash_number)):
+                        $wallet = json_decode($payment->gcash_number, true);
+                        $wallet_name = is_array($wallet) && isset($wallet['name']) ? $wallet['name'] : null;
+                        $wallet_number = is_array($wallet) && isset($wallet['number']) ? $wallet['number'] : null;
+                        if (!$wallet_name && !$wallet_number) { // fallback for legacy plain string
+                            $wallet_name = null;
+                            $wallet_number = $payment->gcash_number;
+                        }
+                    ?>
+                        <?php if ($wallet_name): ?><p><strong>Account Name:</strong> <?php echo htmlspecialchars($wallet_name); ?></p><?php endif; ?>
+                        <?php if ($wallet_number): ?><p><strong>Account Number:</strong> <?php echo htmlspecialchars($wallet_number); ?></p><?php endif; ?>
                     <?php endif; ?>
                     <?php if ($payment->payment_method === 'Manual' && !empty($payment->employer_id)):
                         $employer_name = $admins->getEmployerNameById($payment->employer_id);
@@ -70,15 +86,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <p><strong>Paid by Employer:</strong> <?php echo htmlspecialchars($employer_name); ?></p>
                         <?php endif;
                     endif; ?>
-                    <?php if ($payment->payment_method === 'GCash'): ?>
-                        <p><strong>GCash Name:</strong> <?php echo $payment->gcash_name; ?></p>
-                        <p><strong>GCash Number:</strong> <?php echo $payment->gcash_number; ?></p>
-                    <?php endif; ?>
                     <p><strong>Reference Number:</strong> <?php echo $payment->reference_number; ?></p>
                     <?php if ($payment->screenshot && file_exists($payment->screenshot)): ?>
                         <p><strong>Screenshot:</strong></p>
                         <img src="<?php echo $payment->screenshot; ?>" alt="Transaction Screenshot" class="img-fluid">
                     <?php endif; ?>
+                    <hr>
+                    <h4>Ledger Entries for this Bill</h4>
+                    <?php
+                        $rows = $dbh->prepare("SELECT h.*, pkg.name AS package_name, u.full_name AS employer_name FROM payment_history h LEFT JOIN packages pkg ON h.package_id = pkg.id LEFT JOIN kp_user u ON h.employer_id = u.user_id WHERE h.payment_id = ? ORDER BY h.paid_at ASC, h.id ASC");
+                        $rows->execute([$payment_id]);
+                        $history = $rows->fetchAll();
+                    ?>
+                    <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Paid</th>
+                                <th>Balance After</th>
+                                <th>Method</th>
+                                <th>Employer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php if ($history): foreach ($history as $row): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))); ?></td>
+                                <td><?php echo number_format((float)$row->paid_amount, 2); ?></td>
+                                <td><?php echo number_format((float)$row->balance_after, 2); ?></td>
+                                <td><?php echo htmlspecialchars($row->payment_method ?: 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($row->employer_name ?: 'Admin'); ?></td>
+                            </tr>
+                        <?php endforeach; else: ?>
+                            <tr><td colspan="5" class="text-center">No ledger entries yet.</td></tr>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
                     <hr>
                     <form action="" method="POST">
                         <button type="submit" name="approve" class="btn btn-success">Approve</button>
