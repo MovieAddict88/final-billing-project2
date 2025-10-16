@@ -157,9 +157,9 @@
 					u.profile_pic,
 					COUNT(DISTINCT c.id) AS total_customers,
 					COUNT(DISTINCT CASE WHEN p.status = 'Paid' AND DATE_FORMAT(p.p_date, '%Y-%m') = :current_month THEN c.id END) AS paid_customers,
-					COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND (p.status != 'Paid' OR p.status IS NULL) THEN c.id END) AS unpaid_customers,
+					COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND (p.status = 'Unpaid' OR p.status = 'Rejected' OR (p.status = 'Paid' AND p.balance > 0)) THEN c.id END) AS unpaid_customers,
 					COALESCE(SUM(CASE WHEN p.status = 'Paid' AND DATE_FORMAT(p.p_date, '%Y-%m') = :current_month THEN p.amount ELSE 0 END), 0) AS monthly_paid_collection,
-					COALESCE(SUM(CASE WHEN p.status = 'Unpaid' AND DATE_FORMAT(p.g_date, '%Y-%m') = :current_month THEN p.amount ELSE 0 END), 0) AS monthly_unpaid_collection,
+					COALESCE(SUM(CASE WHEN (p.status = 'Unpaid' OR p.status = 'Rejected' OR (p.status = 'Paid' AND p.balance > 0)) AND p.r_month LIKE CONCAT(:current_month, '%') THEN p.amount ELSE 0 END), 0) AS monthly_unpaid_collection,
 					COALESCE(SUM(p.balance), 0) AS total_balance
 				FROM
 					kp_user u
@@ -170,7 +170,7 @@
 				WHERE
 					u.role = 'employer'
 				GROUP BY
-					u.user_id, u.full_name, u.location
+					u.user_id, u.full_name, u.location, u.profile_pic
 				ORDER BY
 					u.full_name
 			");
