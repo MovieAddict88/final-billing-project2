@@ -30,11 +30,11 @@
 					<form class="form-inline pull-right">
 					  <div class="form-group">
 					    <label class="sr-only" for="search">Search for</label>
-					    <div class="input-group">
-					      <div class="input-group-addon"><span class="glyphicon glyphicon-search" aria-hidden="true"></span></div>
-					      <input type="text" class="form-control" id="search" placeholder="Type a name">
-					      <div class="input-group-addon"></div>
-					    </div>
+                      <div class="input-group">
+                      <div class="input-group-addon"><span class="glyphicon glyphicon-search" aria-hidden="true"></span></div>
+                      <input type="text" class="form-control" id="search" placeholder="Type a name" list="global-suggestions" autocomplete="off">
+                      <div class="input-group-addon"></div>
+                    </div>
 					  </div>
 					  <!-- <button type="submit" class="btn btn-info">Search</button> -->
 					</form>
@@ -48,25 +48,25 @@
 				<?php session::destroy('errors');
 				} ?>
 			</div>
-				<div class="table-responsive">
-				<div class="table-responsive">
-				<table class="table table-striped" id="grid-basic">
+                <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+				<table class="table table-striped table-bordered" id="grid-basic" style="min-width: 1200px; width: 100%;">
 					<thead class="thead-inverse">
 						<tr class="info">
-							<th>ID </th>
-							<th>Action</th>
-							<th>Name</th>
-							<th>Employer</th>
-							<th>NID</th>
-							<th>ADDRESS</th>
-							<th>Package</th>
-							<th>IP </th>
-							<th>Email </th>
-							<th>Contact</th>
-							<th>Type</th>
-                            <th>Amount Paid</th>
-                            <th>Balance</th>
-							<th>Login Code</th>
+							<th style="min-width: 50px;">ID</th>
+							<th style="min-width: 100px;">Action</th>
+							<th style="min-width: 150px;">Name</th>
+							<th style="min-width: 150px;">Employer</th>
+							<th style="min-width: 120px;">NID</th>
+							<th style="min-width: 200px;">ADDRESS</th>
+							<th style="min-width: 120px;">Package</th>
+							<th style="min-width: 120px;">IP</th>
+							<th style="min-width: 200px;">Email</th>
+							<th style="min-width: 120px;">Contact</th>
+							<th style="min-width: 100px;">Type</th>
+                            <th style="min-width: 100px;">Status</th>
+                            <th style="min-width: 120px;">Amount Paid</th>
+                            <th style="min-width: 120px;">Balance</th>
+							<th style="min-width: 150px;">Login Code</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -171,15 +171,16 @@
 			}
 		});
 	});
-	function viewData() {
-		$.ajax({
-			method: "GET",
-			url:"customers_approve.php",
-			success: function(data){
-				$('tbody').html(data);
-			}
-		});
-	}
+    function viewData(page = 1, q = '', limit = 10) {
+        $.ajax({
+            method: "GET",
+            url:"customers_approve.php",
+            data: { page: page, q: q, limit: limit },
+            success: function(data){
+                $('tbody').html(data);
+            }
+        });
+    }
 	function delData(del_id){
 		var id = del_id;
 		$.ajax({
@@ -213,29 +214,37 @@
 			}
 		});
 	}
-	window.onload = viewData();
+    window.onload = function(){ viewData(); };
 	</script>
 	<script type="text/javascript">
 	  $(function() {
 	    grid = $('#grid-basic');
 
 	    // handle search fields of members key up event
-	    $('#search').keyup(function(e) { 
-	      text = $(this).val(); // grab search term
+      // Remote search with autosuggest via datalist
+      var typingTimer; var lastQ='';
+      $('#search').on('input', function(){
+        var q = $(this).val();
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(function(){ lastQ = q; viewData(1, q); }, 250);
+        if (q && q.length >= 1) {
+          $.get('search_suggestions.php', { type: 'customers', q: q }, function(items){
+            var dl = $('#global-suggestions'); dl.empty();
+            (items || []).forEach(function(it){ dl.append('<option value="'+ (it.value || '') +'">'); });
+          }, 'json');
+        }
+      });
 
-	      if(text.length > 1) {
-	        grid.find('tr:has(td)').hide(); // hide data rows, leave header row showing
-
-	        // iterate through all grid rows
-	        grid.find('tr').each(function(i) {
-	          // check to see if search term matches Name column
-	          if($(this).find('.search').text().toUpperCase().match(text.toUpperCase()))
-	            $(this).show(); // show matching row
-	        });
-	      }
-	      else 
-	        grid.find('tr').show(); // if no matching name is found, show all rows
-	    });
+      // Pagination controls delegation
+      $('#grid-basic').on('click', '.page-prev, .page-next', function(){
+        var row = $('.pagination-row');
+        var page = parseInt(row.data('page')) || 1;
+        var total = parseInt(row.data('total')) || 0;
+        var limit = parseInt(row.data('limit')) || 10;
+        var q = row.data('query') || '';
+        if ($(this).hasClass('page-prev') && page > 1) page--; else if ($(this).hasClass('page-next')) page++;
+        viewData(page, q, limit);
+      });
 	    
 	  }); 
 

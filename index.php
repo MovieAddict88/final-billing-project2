@@ -62,98 +62,281 @@ if ($user_role == 'employer') {
         font-size: 16px;
         text-align: right;
     }
+
+    /* Enhanced table styling for professional look */
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .professional-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        min-width: 1200px; /* Force horizontal scroll on smaller screens */
+    }
+    
+    .professional-table thead th {
+        background: #2c3e50;
+        color: white;
+        font-weight: 600;
+        padding: 12px 15px;
+        text-align: left;
+        border: none;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .professional-table tbody tr {
+        border-bottom: 1px solid #e8e8e8;
+        transition: background-color 0.2s ease;
+    }
+    
+    .professional-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .professional-table tbody tr:nth-child(even) {
+        background-color: #fafafa;
+    }
+    
+    .professional-table tbody tr:nth-child(even):hover {
+        background-color: #f1f3f4;
+    }
+    
+    .professional-table td {
+        padding: 12px 15px;
+        vertical-align: middle;
+        border: none;
+        word-wrap: break-word;
+        max-width: 200px;
+    }
+    
+    .professional-table .text-nowrap {
+        white-space: nowrap;
+    }
+    
+    .professional-table .login-code {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        word-break: break-all;
+        max-width: 150px;
+    }
+    
+    .professional-table .amount {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+    }
+    
+    .professional-table .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .status-paid { background: #d4edda; color: #155724; }
+    .status-unpaid { background: #f8d7da; color: #721c24; }
+    .status-balance { background: #fff3cd; color: #856404; }
+    .status-pending { background: #cce5ff; color: #004085; }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 120px;
+    }
+    
+    .scrollable-table-wrapper {
+        overflow-x: auto;
+        overflow-y: visible;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .scrollable-table-wrapper::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .scrollable-table-wrapper::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .scrollable-table-wrapper::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+    }
+    
+    .scrollable-table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .professional-table {
+            font-size: 12px;
+            min-width: 1000px;
+        }
+        
+        .professional-table th,
+        .professional-table td {
+            padding: 8px 10px;
+        }
+        
+        .action-btn {
+            width: 70px;
+            font-size: 11px;
+            padding: 4px 6px;
+        }
+        
+        .professional-table .login-code {
+            font-size: 10px;
+            max-width: 120px;
+        }
+    }
+    
+    @media (min-width: 1200px) {
+        .professional-table {
+            min-width: auto;
+            width: 100%;
+        }
+        
+        .scrollable-table-wrapper {
+            overflow-x: visible;
+        }
+    }
 </style>
+
 <div class="row employer-stack-laptop">
-    <div class="col-md-6">
+    <div class="col-md-12">
         <div class="panel panel-default">
-            <div class="panel-heading">Your Assigned Customers</div>
+            <div class="panel-heading">
+                <h4 class="panel-title">Your Assigned Customers</h4>
+            </div>
             <div class="panel-body">
-                <div class="table-responsive">
-                <table class="table table-striped table-custom">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Address</th>
-                            <th>Contact</th>
-                            <th>Login Code</th>
-                            <th>Paid</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($customers): ?>
-                            <?php foreach ($customers as $customer): ?>
+                <div class="scrollable-table-wrapper">
+                    <table class="professional-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Address</th>
+                                <th>Contact</th>
+                                <th>Login Code</th>
+                                <th class="text-nowrap">Paid (₱)</th>
+                                <th class="text-nowrap">Balance (₱)</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($customers): ?>
+                                <?php foreach ($customers as $customer): ?>
+                                    <tr>
+                                        <td class="text-nowrap"><?php echo htmlspecialchars($customer->full_name); ?></td>
+                                        <td><?php echo htmlspecialchars($customer->address); ?></td>
+                                        <td class="text-nowrap"><?php echo htmlspecialchars($customer->contact); ?></td>
+                                        <td class="login-code"><?php echo htmlspecialchars($customer->login_code); ?></td>
+                                        <td class="amount"><?php echo htmlspecialchars(number_format($customer->total_paid, 2)); ?></td>
+                                        <td class="amount"><?php echo htmlspecialchars(number_format($customer->total_balance, 2)); ?></td>
+                                        <td>
+                                            <?php
+                                            $status_class = 'status-' . strtolower($customer->status);
+                                            echo '<span class="status-badge ' . $status_class . '">' . htmlspecialchars($customer->status) . '</span>';
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <a href="pay.php?customer=<?php echo $customer->id; ?>&action=bill" class="btn btn-primary btn-sm action-btn">Invoice</a>
+                                                <a href="pay.php?customer=<?php echo $customer->id; ?>" class="btn btn-info btn-sm action-btn">Bill</a>
+                                                <?php if ($customer->total_balance > 0): ?>
+                                                    <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-warning btn-sm action-btn">
+                                                        <?php echo ($customer->total_paid > 0) ? 'Pay Balance' : 'Pay'; ?>
+                                                    </a>
+                                                <?php elseif ($customer->status != 'Paid' && $customer->status != 'Partial'): ?>
+                                                    <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-success btn-sm action-btn">Pay</a>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($customer->full_name); ?></td>
-                                    <td><?php echo htmlspecialchars($customer->address); ?></td>
-                                    <td><?php echo htmlspecialchars($customer->contact); ?></td>
-                                    <td><?php echo htmlspecialchars($customer->login_code); ?></td>
-                                    <td><?php echo htmlspecialchars(number_format($customer->total_paid, 2)); ?></td>
-                                    <td><?php echo htmlspecialchars(number_format($customer->total_balance, 2)); ?></td>
-                                    <td><?php echo htmlspecialchars($customer->status); ?></td>
-                                    <td>
-                                        <a href="pay.php?customer=<?php echo $customer->id; ?>&action=bill" class="btn btn-primary btn-sm action-btn">Invoice</a>
-                                        <a href="pay.php?customer=<?php echo $customer->id; ?>" class="btn btn-info btn-sm action-btn">Bill</a>
-                                        <?php if ($customer->total_balance > 0): ?>
-                                            <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-warning btn-sm action-btn">Pay Balance</a>
-                                        <?php elseif ($customer->status != 'Paid' && $customer->status != 'Partial'): ?>
-                                            <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-success btn-sm action-btn">Pay</a>
-                                        <?php endif; ?>
+                                    <td colspan="8" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fa fa-users fa-2x mb-2"></i><br>
+                                            No customers found for this location.
+                                        </div>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="8">No customers found for this location.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="panel panel-default">
-            <div class="panel-heading">Products Availed by Your Customers</div>
-            <div class="panel-body">
-                <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Package Name</th>
-                            <th>Fee</th>
-                            <th>Number of Customers</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($products): ?>
-                            <?php foreach ($products as $product): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($product->name); ?></td>
-                                    <td><?php echo htmlspecialchars($product->fee); ?></td>
-                                    <td><?php echo htmlspecialchars($product->customer_count); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="3">No products found for this location.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<div class="row employer-stack-laptop">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4 class="panel-title">Products Availed by Your Customers</h4>
+            </div>
+            <div class="panel-body">
+                <div class="scrollable-table-wrapper">
+                    <table class="professional-table">
+                        <thead>
+                            <tr>
+                                <th>Package Name</th>
+                                <th class="text-nowrap">Fee (₱)</th>
+                                <th>Number of Customers</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($products): ?>
+                                <?php foreach ($products as $product): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($product->name); ?></td>
+                                        <td class="amount"><?php echo htmlspecialchars(number_format($product->fee, 2)); ?></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary" style="font-size: 14px; padding: 6px 12px;">
+                                                <?php echo htmlspecialchars($product->customer_count); ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fa fa-box fa-2x mb-2"></i><br>
+                                            No products found for this location.
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-12">
         <div class="panel panel-default">
             <div class="panel-heading">
-                Overview - Subscribers Count
+                <h4 class="panel-title">Overview - Subscribers Count</h4>
             </div>
             <div class="panel-body" id="customer-status-progress-bars">
                 <!-- Progress bars will be generated here by JavaScript -->
@@ -163,8 +346,9 @@ if ($user_role == 'employer') {
 </div>
 <?php
 } else {
-    // Admin Dashboard
+    // Admin Dashboard (unchanged)
 ?>
+<!-- Admin dashboard code remains the same -->
 <style>
     .chart-legend {
         width: 100%;
@@ -262,6 +446,7 @@ if ($user_role == 'employer') {
 } // End of role check
 include 'includes/footer.php';
 ?>
+
 <script type="text/javascript">
     $(document).ready(function() {
         <?php if ($user_role == 'employer'): ?>
@@ -275,10 +460,11 @@ include 'includes/footer.php';
 
                 var statusConfig = {
                     'Paid': { label: 'Paid', color: '#28a745', order: 1 },
-                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 2 },
-                    'Rejected': { label: 'Reject', color: '#dc3545', order: 3 },
-                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 4 },
-                    'Pending': { label: 'Pending', color: '#ffc107', order: 5 }
+                    'Balance': { label: 'Balance', color: '#fd7e14', order: 2 },
+                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 3 },
+                    'Rejected': { label: 'Reject', color: '#dc3545', order: 4 },
+                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 5 },
+                    'Pending': { label: 'Pending', color: '#ffc107', order: 6 }
                 };
 
                 var total = data.reduce((acc, item) => acc + parseInt(item.count), 0);
@@ -320,6 +506,7 @@ include 'includes/footer.php';
             }
         });
         <?php else: ?>
+        // Admin dashboard JavaScript remains the same
         var ctx = document.getElementById('myChart').getContext('2d');
         var myChart = new Chart(ctx, {
             type: 'bar',
@@ -448,7 +635,24 @@ include 'includes/footer.php';
                         },
                         animation: {
                             duration: 1000,
-                            easing: 'easeInOutQuart'
+                            easing: 'easeInOutQuart',
+                            onComplete: function() {
+                                var chartInstance = this.chart;
+                                var ctx = chartInstance.ctx;
+                                ctx.textAlign = 'left';
+                                ctx.font = "bold 12px Arial";
+                                ctx.fillStyle = "#333";
+
+                                this.data.datasets.forEach(function(dataset, i) {
+                                    var meta = chartInstance.controller.getDatasetMeta(i);
+                                    meta.data.forEach(function(bar, index) {
+                                        var data = dataset.data[index];
+                                        if (data > 0) {
+                                            ctx.fillText(data, bar._model.x + 5, bar._model.y + 4);
+                                        }
+                                    });
+                                });
+                            }
                         }
                     }
                 });

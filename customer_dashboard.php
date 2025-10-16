@@ -25,6 +25,7 @@ $customer_id = $_SESSION['customer_id'];
 $customer = $admins->getCustomerInfo($customer_id);
 $package = $admins->getPackageInfo($customer->package_id);
 $payments = $admins->fetchAllIndividualBill($customer_id);
+$ledger = $admins->fetchPaymentHistoryByCustomer($customer_id);
 
 ?>
 
@@ -73,10 +74,24 @@ $payments = $admins->fetchAllIndividualBill($customer_id);
                                         <td><?php echo $payment->amount; ?></td>
                                         <td><?php echo number_format($payment->paid, 2); ?></td>
                                         <td><?php echo number_format($payment->balance, 2); ?></td>
-                                        <td><?php echo ($payment->paid > 0 && $payment->balance > 0) ? 'Initial' : $payment->status; ?></td>
+                                        <td><?php 
+                                            if ($payment->status === 'Rejected') {
+                                                echo 'Rejected';
+                                            } elseif ($payment->paid > 0 && $payment->balance > 0) {
+                                                echo 'Balance';
+                                            } elseif ($payment->paid > 0 && $payment->balance == 0) {
+                                                echo 'Paid';
+                                            } else {
+                                                echo 'Unpaid';
+                                            }
+                                        ?></td>
                                         <td>
                                             <?php if ($payment->balance > 0): ?>
-                                                <a href="payment_transaction.php?id=<?php echo $payment->id; ?>" class="btn btn-primary">Pay Balance</a>
+                                                <?php if ($payment->paid > 0): ?>
+                                                    <a href="payment_transaction.php?id=<?php echo $payment->id; ?>" class="btn btn-primary">Pay Balance</a>
+                                                <?php else: ?>
+                                                    <a href="payment_transaction.php?id=<?php echo $payment->id; ?>" class="btn btn-primary">Pay</a>
+                                                <?php endif; ?>
                                             <?php elseif ($payment->status == 'Unpaid' || $payment->status == 'Rejected'): ?>
                                                 <a href="payment_transaction.php?id=<?php echo $payment->id; ?>" class="btn btn-primary">Pay</a>
                                             <?php endif; ?>
@@ -86,6 +101,44 @@ $payments = $admins->fetchAllIndividualBill($customer_id);
                             <?php else: ?>
                                 <tr>
                                     <td colspan="6" class="text-center">No payment history found.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
+                    <hr>
+                    <h4>Invoice Payment Ledger</h4>
+                    <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Billing Month</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Paid Amount</th>
+                                <th>Balance</th>
+                                <th>Payment Method</th>
+                                <th>Employer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($ledger): ?>
+                                <?php foreach ($ledger as $row): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))); ?></td>
+                                        <td><?php echo htmlspecialchars($row->r_month); ?></td>
+                                        <td><?php echo htmlspecialchars($row->package_name ?: 'N/A'); ?></td>
+                                        <td><?php echo number_format((float)$row->amount, 2); ?></td>
+                                        <td><?php echo number_format((float)$row->paid_amount, 2); ?></td>
+                                        <td><?php echo number_format((float)$row->balance_after, 2); ?></td>
+                                        <td><?php echo htmlspecialchars($row->payment_method ?: 'N/A'); ?></td>
+                                        <td><?php echo htmlspecialchars($row->employer_name ?: 'Admin'); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="8" class="text-center">No payment ledger yet.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

@@ -125,53 +125,70 @@
         <div class="em"><b>Name   : </b> <em><?=$info->full_name?></em></div>
         <div class="em"><b>Address:</b> <em><?=$info->address ?></em></div>
         <div class="em"><b>Contact :</b> <em><?=$info->contact ?></em> </div>
-        <div class="em"><b>Account Number:</b> <em><?=$info->ip_address?></em></div>
+        <div class="highlight" style="padding:8px 10px; margin:10px 0;">Account No.: <b><?=$info->ip_address?></b></div>
         <?php } ?>
     <div class="row">
         <div class="table-responsive">
         <table class="table table-striped table-bordered">
             <thead class="thead-inverse">
                 <tr>
-                    <th>Billing Month</th>
-                    <th>Amount</th>
-                    <th>Paid Amount</th>
-                    <th>Balance</th>
+                    <th colspan="2">Account Details</th>
                 </tr>
             </thead>
             <tbody>
             <?php
-                $total_balance = 0;
+                // Build rows in the requested format and compute totals from real data
+                $total_due = 0.00;
                 $bill_ids = [];
                 $monthArray = [];
+                $packageName = isset($packageInfo->name) ? $packageInfo->name : 'N/A';
+
+                echo '<tr><td><b>Plan</b></td><td>'.htmlspecialchars($packageName).'</td></tr>';
+
                 if (isset($bills) && sizeof($bills) > 0){
                     foreach ($bills as $bill){
-                        $paidAmount = $bill->amount - $bill->balance;
-                        $total_balance += $bill->balance;
-                        if ($bill->status == 'Unpaid') {
+                        $year = date('Y', strtotime($bill->g_date));
+                        $monthNum = date('n', strtotime($bill->g_date)); // aligns with generation month
+                        // Derive billing period boundaries using a standard billing day-of-month (5th)
+                        $billingDay = 5;
+                        $startTs = mktime(0, 0, 0, $monthNum - 1, $billingDay, $year);
+                        $endTs   = mktime(0, 0, 0, $monthNum, $billingDay, $year);
+                        $period  = date('F j, Y', $startTs) . ' - ' . date('F j, Y', $endTs);
+
+                        // Determine the amount still due on this bill
+                        $due_amount = (is_numeric($bill->balance) && (float)$bill->balance > 0)
+                            ? (float)$bill->balance
+                            : (float)$bill->amount;
+
+                        // Only show rows that still have amount due (Unpaid or with positive balance)
+                        if ($bill->status !== 'Paid' && $due_amount > 0) {
+                            $total_due += $due_amount;
                             $monthArray[] = $bill->r_month;
                             $bill_ids[] = $bill->id;
+
+                            echo '<tr>';
+                            echo '<td><b>Billing Period</b><br><span style="font-weight:normal;">('.htmlspecialchars($bill->r_month).')</span></td>';
+                            echo '<td>'.htmlspecialchars($period).'<br><b>Amount:</b> ₱'.number_format($due_amount, 2).'</td>';
+                            echo '</tr>';
                         }
-                        ?>
-                    <tr>
-                       <td><?=$bill->r_month?></td>
-                       <td>₱<?=number_format($bill->amount, 2)?></td>
-                       <td>₱<?=number_format($paidAmount, 2)?></td>
-                       <td>₱<?=number_format($bill->balance, 2)?></td>
-                    </tr>
-                <?php   }
-                } else { ?>
-                    <tr>
-                        <td colspan="4" class="text-center">No bills found.</td>
-                    </tr>
-                <?php } ?>
+                    }
+                } else {
+                    echo '<tr><td colspan="2" class="text-center">No bills found.</td></tr>';
+                }
+            ?>
             </tbody>
         </table>
         </div>
     </div>
-    <?php if ($action != 'bill' && $total_balance > 0): ?>
+    <?php if ($action != 'bill' && (isset($total_due) && $total_due > 0)): ?>
+    <p class="amount-due">
+        <span>TOTAL AMOUNT DUE:</span>
+        <span>  ₱<?=number_format($total_due, 2)?></span>
+    </p>
+
     <div class="row no-print">
      <form class="form-inline" action="post_approve.php" method="POST">
-            <input type="hidden" name="customer" value="<?=(isset($info->id) ? $info->id : '')?>">			
+            <input type="hidden" name="customer" value="<?=(isset($info->id) ? $info->id : '')?>">
             <input type="hidden" name="bills" value="<?=implode($bill_ids,',')?>">
             <div class="form-group">
             <label for="months"></label>
@@ -191,12 +208,54 @@
             </div>
             <div class="form-group">
             <label class="sr-only" for="total">Payment</label>
-            <input type="number" class="form-control disabled" name="total" id="total" placeholder="total" required="" value="<?=$total_balance?>">
+            <input type="number" class="form-control disabled" name="total" id="total" placeholder="total" required="" value="<?=$total_due?>">
             </div>
             <button type="submit" class="btn btn-primary">Paid</button>
         </form>
     </div>
     <?php endif; ?>
+    <hr>
+    <?php
+        // Invoice Payment Ledger section
+        $paymentLedger = $admins->fetchPaymentHistoryByCustomer($id);
+    ?>
+    <h3>Invoice Payment Ledger</h3>
+    <div class="table-responsive">
+    <table class="table table-striped table-bordered">
+        <thead class="thead-inverse">
+            <tr>
+                <th>Time</th>
+                <th>Billing Month</th>
+                <th>Package</th>
+                <th>Amount</th>
+                <th>Paid Amount</th>
+                <th>Balance</th>
+                <th>Payment Method</th>
+                <th>Employer</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if ($paymentLedger && count($paymentLedger) > 0): ?>
+                <?php foreach ($paymentLedger as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars(date('Y-m-d H:i:s', strtotime($row->paid_at))) ?></td>
+                        <td><?= htmlspecialchars($row->r_month) ?></td>
+                        <td><?= htmlspecialchars($row->package_name ?: 'N/A') ?></td>
+                        <td><?= number_format((float)$row->amount, 2) ?></td>
+                        <td><?= number_format((float)$row->paid_amount, 2) ?></td>
+                        <td><?= number_format((float)$row->balance_after, 2) ?></td>
+                        <td><?= htmlspecialchars($row->payment_method ?: 'N/A') ?></td>
+                        <td><?= htmlspecialchars($row->employer_name ?: 'Admin') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="8" class="text-center">No payment ledger yet.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+    </div>
     <div class="sign pull-right">Authorized Signature</div>
 </div>
 
