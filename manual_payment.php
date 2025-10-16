@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <td>
                                             <input type="checkbox" name="bills[]" value="<?php echo $bill->id; ?>" data-balance="<?php echo htmlspecialchars(number_format($due_amount, 2, '.', '')); ?>" <?php echo $is_pending ? 'disabled' : ''; ?>>
                                         </td>
-                                        <td><?php echo htmlspecialchars($bill->r_month); ?><?php if ($is_pending): ?> <span class="badge badge-warning">Pending approval</span><?php endif; ?></td>
+                                        <td><?php echo htmlspecialchars($bill->r_month); ?><?php if ($is_pending): ?> <span class="status-chip status-pending-bg">PENDING</span><?php endif; ?></td>
                                         <td><?php echo htmlspecialchars(number_format((float)$bill->amount, 2)); ?></td>
                                         <td><?php echo htmlspecialchars(number_format($due_amount, 2)); ?></td>
                                     </tr>
