@@ -260,24 +260,24 @@
 			return false;
 		}
 
-		public function fetchCustomersByEmployer($employer_id, $limit = 10)
+        public function fetchCustomersByEmployer($employer_id, $limit = 10)
 		{
 			$limit = (int) $limit;
 			$request = $this->dbh->prepare("
-				SELECT
-					c.*,
-					COALESCE(p.total_paid, 0) as total_paid,
-					COALESCE(p.total_balance, 0) as total_balance,
-					CASE
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Unpaid') THEN 'Unpaid'
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
-						WHEN c.dropped = 1 THEN 'Unpaid'
-						WHEN COALESCE(p.total_balance, 0) > 0 THEN 'Initial'
-						WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id) THEN 'Unpaid'
-						ELSE 'Prospects'
-					END AS status
+                SELECT
+                    c.*,
+                    COALESCE(p.total_paid, 0) as total_paid,
+                    COALESCE(p.total_balance, 0) as total_balance,
+                    CASE
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
+                        WHEN c.dropped = 1 THEN 'Unpaid'
+                        WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Unpaid') THEN 'Unpaid'
+                        WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id) THEN 'Unpaid'
+                        ELSE 'Prospects'
+                    END AS status
 				FROM
 					customers c
 				LEFT JOIN

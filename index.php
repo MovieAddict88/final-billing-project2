@@ -92,13 +92,26 @@ if ($user_role == 'employer') {
                                     <td><?php echo htmlspecialchars($customer->login_code); ?></td>
                                     <td><?php echo htmlspecialchars(number_format($customer->total_paid, 2)); ?></td>
                                     <td><?php echo htmlspecialchars(number_format($customer->total_balance, 2)); ?></td>
-                                    <td><?php echo htmlspecialchars($customer->status); ?></td>
+                                    <td>
+                                        <?php
+                                            $status = (string)$customer->status;
+                                            $statusUpper = strtoupper($status);
+                                            $label = $statusUpper;
+                                            $badgeClass = 'status-prospects-bg';
+                                            if ($statusUpper === 'PAID') { $badgeClass = 'status-paid-bg'; }
+                                            elseif ($statusUpper === 'BALANCE' || $statusUpper === 'PARTIAL') { $badgeClass = 'status-balance-bg'; $label = 'BALANCE'; }
+                                            elseif ($statusUpper === 'UNPAID') { $badgeClass = 'status-unpaid-bg'; }
+                                            elseif ($statusUpper === 'REJECTED') { $badgeClass = 'status-rejected-bg'; }
+                                            elseif ($statusUpper === 'PENDING') { $badgeClass = 'status-pending-bg'; }
+                                        ?>
+                                        <span class="status-chip <?php echo $badgeClass; ?>"><?php echo htmlspecialchars($label); ?></span>
+                                    </td>
                                     <td>
                                         <a href="pay.php?customer=<?php echo $customer->id; ?>&action=bill" class="btn btn-primary btn-sm action-btn">Invoice</a>
                                         <a href="pay.php?customer=<?php echo $customer->id; ?>" class="btn btn-info btn-sm action-btn">Bill</a>
                                         <?php if ($customer->total_balance > 0): ?>
                                             <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-warning btn-sm action-btn">Pay Balance</a>
-                                        <?php elseif ($customer->status != 'Paid' && $customer->status != 'Partial'): ?>
+                                        <?php elseif ($customer->status != 'Paid' && $customer->status != 'Partial' && $customer->status != 'Balance'): ?>
                                             <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-success btn-sm action-btn">Pay</a>
                                         <?php endif; ?>
                                     </td>
@@ -274,12 +287,12 @@ include 'includes/footer.php';
                 if (!container.length) return;
 
                 var statusConfig = {
-                    'Paid': { label: 'Paid', color: '#28a745', order: 1 },
-                    'Balance': { label: 'Balance', color: '#fd7e14', order: 2 },
-                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 3 },
-                    'Rejected': { label: 'Reject', color: '#dc3545', order: 4 },
-                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 5 },
-                    'Pending': { label: 'Pending', color: '#ffc107', order: 6 }
+                    'Paid': { label: 'PAID', color: '#28a745', order: 1 },
+                    'Balance': { label: 'BALANCE', color: '#fd7e14', order: 2 },
+                    'Unpaid': { label: 'UNPAID', color: '#8B0000', order: 3 },
+                    'Rejected': { label: 'REJECTED', color: '#dc3545', order: 4 },
+                    'Prospects': { label: 'PROSPECT', color: '#6c757d', order: 5 },
+                    'Pending': { label: 'PENDING', color: '#ffc107', order: 6 }
                 };
 
                 var total = data.reduce((acc, item) => acc + parseInt(item.count), 0);

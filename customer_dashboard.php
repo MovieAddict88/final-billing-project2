@@ -63,7 +63,7 @@ require_once 'includes/classes/admin-class.php';
 
 .status-paid .status-icon { background-color: #5cb85c; }
 .status-unpaid .status-icon { background-color: #777; }
-.status-partial .status-icon { background-color: #f0ad4e; }
+.status-partial .status-icon { background-color: #fd7e14; }
 .status-rejected .status-icon { background-color: #d9534f; }
 .status-info .status-icon { background-color: #5bc0de; }
 
@@ -180,7 +180,7 @@ $ledger = $admins->fetchPaymentHistoryByCustomer($customer_id);
                                                 $statusIcon = '<span class="status-icon"></span>';
                                             } elseif ($status === 'Paid' && $payment->balance > 0) {
                                                 $statusClass = 'status-partial';
-                                                $statusText = 'Partial';
+                                                $statusText = 'Balance';
                                                 $statusIcon = '<span class="status-icon"></span>';
                                             } elseif ($status === 'Unpaid') {
                                                 $statusClass = 'status-unpaid';
