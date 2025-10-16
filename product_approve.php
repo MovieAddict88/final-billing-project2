@@ -43,10 +43,17 @@
 			$commons->redirectTo(SITE_PATH.'products.php');
 		}
 
-	}else{
-		$products = $admins->fetchProducts();
-		if (isset($products) && sizeof($products) > 0){ 
-			foreach ($products as $product) { ?>
+    }else{
+        // Pagination and search
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 10;
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+        $offset = ($page - 1) * $limit;
+        $products = $admins->fetchProductsPage($offset, $limit, $q);
+        $total = $admins->countProducts($q);
+        $totalPages = ($limit > 0) ? (int)ceil($total / $limit) : 1;
+        if (isset($products) && sizeof($products) > 0){ 
+            foreach ($products as $product) { ?>
     <tr>
         <td class="search" scope="row">
             <?=$product->pro_id?>
@@ -116,7 +123,19 @@
         </td>
     </tr>
     <?php
-			}
-		}
-	}
+            }
+            // Pagination controls row
+            $prevDisabled = ($page <= 1) ? 'disabled' : '';
+            $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+            ?>
+            <tr class="pagination-row" data-page="<?=$page?>" data-total="<?=$total?>" data-limit="<?=$limit?>" data-query="<?=htmlspecialchars($q)?>">
+                <td colspan="6" class="text-center">
+                    <button class="btn btn-default btn-sm page-prev" <?=$prevDisabled?>>Prev</button>
+                    <span class="mx-2">Page <?=$page?> of <?=$totalPages?></span>
+                    <button class="btn btn-default btn-sm page-next" <?=$nextDisabled?>>Next</button>
+                </td>
+            </tr>
+    <?php
+        }
+    }
 ?>
