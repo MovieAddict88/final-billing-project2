@@ -10,7 +10,17 @@ $user_role = $_SESSION['user_role'] ?? 'admin';
 if ($user_role == 'employer') {
     // Employer Dashboard
     $employer_id = $_SESSION['user_id'];
-    $customers = $admins->fetchCustomersByEmployer($employer_id);
+    
+    // Pagination setup
+    $customers_per_page = 10;
+    $current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $offset = ($current_page - 1) * $customers_per_page;
+    
+    // Fetch paginated customers
+    $customers = $admins->fetchCustomersByEmployerPage($employer_id, $offset, $customers_per_page);
+    $total_customers = $admins->countCustomersByEmployer($employer_id);
+    $total_pages = ceil($total_customers / $customers_per_page);
+    
     $products = $admins->fetchProductsByEmployer($employer_id);
 ?>
 <h3>Employer Dashboard</h3>
@@ -213,6 +223,75 @@ if ($user_role == 'employer') {
             overflow-x: visible;
         }
     }
+    
+    /* Pagination Styling */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .pagination-container nav {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .pagination-info {
+        min-width: 200px;
+        text-align: right;
+    }
+    
+    .pagination {
+        margin: 0;
+    }
+    
+    .pagination .page-link {
+        color: #2c3e50;
+        border-color: #dee2e6;
+        padding: 6px 12px;
+        transition: all 0.2s;
+    }
+    
+    .pagination .page-link:hover {
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+        color: #2c3e50;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: #2c3e50;
+        border-color: #2c3e50;
+        color: white;
+        font-weight: 600;
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        background-color: #fff;
+        border-color: #dee2e6;
+    }
+    
+    @media (max-width: 768px) {
+        .pagination-container {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .pagination-info {
+            text-align: center;
+            width: 100%;
+        }
+        
+        .pagination .page-link {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+    }
 </style>
 
 <div class="row employer-stack-laptop">
@@ -280,6 +359,79 @@ if ($user_role == 'employer') {
                         </tbody>
                     </table>
                 </div>
+                
+                <?php if ($total_pages > 1): ?>
+                <div class="pagination-container">
+                    <nav aria-label="Customer pagination">
+                        <ul class="pagination pagination-sm">
+                            <?php if ($current_page > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<?php echo $current_page - 1; ?>" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                            
+                            <?php
+                            // Show page numbers with ellipsis for large page counts
+                            $page_range = 2; // Show 2 pages on each side of current page
+                            $start_page = max(1, $current_page - $page_range);
+                            $end_page = min($total_pages, $current_page + $page_range);
+                            
+                            // Show first page and ellipsis if needed
+                            if ($start_page > 1) {
+                                echo '<li class="page-item"><a class="page-link" href="?page=1">1</a></li>';
+                                if ($start_page > 2) {
+                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+                            }
+                            
+                            // Show page numbers
+                            for ($i = $start_page; $i <= $end_page; $i++):
+                            ?>
+                                <li class="page-item <?php echo ($i == $current_page) ? 'active' : ''; ?>">
+                                    <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                </li>
+                            <?php
+                            endfor;
+                            
+                            // Show last page and ellipsis if needed
+                            if ($end_page < $total_pages) {
+                                if ($end_page < $total_pages - 1) {
+                                    echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                                }
+                                echo '<li class="page-item"><a class="page-link" href="?page=' . $total_pages . '">' . $total_pages . '</a></li>';
+                            }
+                            ?>
+                            
+                            <?php if ($current_page < $total_pages): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<?php echo $current_page + 1; ?>" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=<?php echo $total_pages; ?>" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </nav>
+                    <div class="pagination-info">
+                        <span class="text-muted">
+                            Showing <?php echo (($current_page - 1) * $customers_per_page + 1); ?> 
+                            to <?php echo min($current_page * $customers_per_page, $total_customers); ?> 
+                            of <?php echo $total_customers; ?> customers
+                        </span>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
