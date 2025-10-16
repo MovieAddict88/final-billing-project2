@@ -49,3 +49,21 @@
     overflow-x: auto;
     overflow-y: visible;
 }
+
+/* === Unified status badge colors to match overview progress bar === */
+.label.label-status-paid {
+    background-color: #28a745; /* green */
+}
+.label.label-status-balance {
+    background-color: #fd7e14; /* orange */
+}
+.label.label-status-unpaid {
+    background-color: #8B0000; /* dark red */
+}
+.label.label-status-rejected {
+    background-color: #dc3545; /* red */
+}
+.label.label-status-pending {
+    background-color: #ffc107; /* yellow */
+    color: #212529; /* dark text for contrast */
+}

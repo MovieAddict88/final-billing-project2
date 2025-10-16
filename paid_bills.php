@@ -72,22 +72,27 @@
                                 <td><?=$bills->bill_amount?></td>
                                 <td>
                                     <?php 
-                                        $status_class = '';
-                                        switch($customer_status) {
+                                        $status_upper = strtoupper($customer_status);
+                                        switch ($customer_status) {
                                             case 'Paid':
-                                                $status_class = 'label-success';
+                                                $status_class = 'label-status-paid';
                                                 break;
                                             case 'Balance':
-                                                $status_class = 'label-warning';
+                                                $status_class = 'label-status-balance';
+                                                break;
+                                            case 'Pending':
+                                                $status_class = 'label-status-pending';
+                                                break;
+                                            case 'Rejected':
+                                                $status_class = 'label-status-rejected';
                                                 break;
                                             case 'Unpaid':
-                                                $status_class = 'label-danger';
-                                                break;
                                             default:
-                                                $status_class = 'label-default';
+                                                $status_class = 'label-status-unpaid';
+                                                break;
                                         }
                                     ?>
-                                    <span class="label <?=$status_class?>"><?=$customer_status?></span>
+                                    <span class="label <?=$status_class?>"><?=$status_upper?></span>
                                 </td>
                                 <td>₱<?=number_format($total_balance, 2)?></td>
                                 <td><button onclick="getReceipt(<?=$customer_id?>)" class="btn btn-primary">Disconnection</button></td>

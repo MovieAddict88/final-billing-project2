@@ -274,12 +274,11 @@ include 'includes/footer.php';
                 if (!container.length) return;
 
                 var statusConfig = {
-                    'Paid': { label: 'Paid', color: '#28a745', order: 1 },
-                    'Balance': { label: 'Balance', color: '#fd7e14', order: 2 },
-                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 3 },
-                    'Rejected': { label: 'Reject', color: '#dc3545', order: 4 },
-                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 5 },
-                    'Pending': { label: 'Pending', color: '#ffc107', order: 6 }
+                    'Paid': { label: 'PAID', color: '#28a745', order: 1 },
+                    'Balance': { label: 'BALANCE', color: '#fd7e14', order: 2 },
+                    'Unpaid': { label: 'UNPAID', color: '#8B0000', order: 3 },
+                    'Rejected': { label: 'REJECTED', color: '#dc3545', order: 4 },
+                    'Pending': { label: 'PENDING', color: '#ffc107', order: 5 }
                 };
 
                 var total = data.reduce((acc, item) => acc + parseInt(item.count), 0);
