@@ -183,22 +183,27 @@
                     <td class="search">
                         <?php 
                             $status = $admins->getCustomerStatus($customer->id);
-                            $status_class = '';
-                            switch($status) {
+                            $status_upper = strtoupper($status);
+                            switch ($status) {
                                 case 'Paid':
-                                    $status_class = 'label-success';
+                                    $status_class = 'label-status-paid';
                                     break;
                                 case 'Balance':
-                                    $status_class = 'label-warning';
+                                    $status_class = 'label-status-balance';
+                                    break;
+                                case 'Pending':
+                                    $status_class = 'label-status-pending';
+                                    break;
+                                case 'Rejected':
+                                    $status_class = 'label-status-rejected';
                                     break;
                                 case 'Unpaid':
-                                    $status_class = 'label-danger';
-                                    break;
                                 default:
-                                    $status_class = 'label-default';
+                                    $status_class = 'label-status-unpaid';
+                                    break;
                             }
                         ?>
-                        <span class="label <?=$status_class?>"><?=$status?></span>
+                        <span class="label <?=$status_class?>"><?=$status_upper?></span>
                     </td>
                     <td class="search"><?=number_format($customer->total_paid, 2)?></td>
                     <td class="search"><?=number_format($customer->total_balance, 2)?></td>

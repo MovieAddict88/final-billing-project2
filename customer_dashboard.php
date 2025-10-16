@@ -75,15 +75,19 @@ $ledger = $admins->fetchPaymentHistoryByCustomer($customer_id);
                                         <td><?php echo number_format($payment->paid, 2); ?></td>
                                         <td><?php echo number_format($payment->balance, 2); ?></td>
                                         <td><?php 
-                                            if ($payment->status === 'Rejected') {
-                                                echo 'Rejected';
+                                            $label = '';
+                                            if ($payment->status === 'Pending') {
+                                                $label = 'PENDING';
+                                            } elseif ($payment->status === 'Rejected') {
+                                                $label = 'REJECTED';
                                             } elseif ($payment->paid > 0 && $payment->balance > 0) {
-                                                echo 'Balance';
+                                                $label = 'BALANCE';
                                             } elseif ($payment->paid > 0 && $payment->balance == 0) {
-                                                echo 'Paid';
+                                                $label = 'PAID';
                                             } else {
-                                                echo 'Unpaid';
+                                                $label = 'UNPAID';
                                             }
+                                            echo $label;
                                         ?></td>
                                         <td>
                                             <?php if ($payment->balance > 0): ?>

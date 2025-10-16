@@ -319,34 +319,47 @@
 			return false;
 		}
 
-		/**
-		 * Get customer status based on payment history
-		 * Returns: 'Unpaid', 'Balance', or 'Paid'
-		 */
-		public function getCustomerStatus($customer_id)
-		{
-			$request = $this->dbh->prepare("
-				SELECT
-					COALESCE(SUM(amount - balance), 0) as total_paid,
-					COALESCE(SUM(balance), 0) as total_balance
-				FROM payments
-				WHERE customer_id = ?
-			");
-			if ($request->execute([$customer_id])) {
-				$result = $request->fetch();
-				$total_paid = (float)$result->total_paid;
-				$total_balance = (float)$result->total_balance;
-				
-				if ($total_paid > 0 && $total_balance > 0) {
-					return 'Balance';
-				} elseif ($total_paid > 0 && $total_balance == 0) {
-					return 'Paid';
-				} else {
-					return 'Unpaid';
-				}
-			}
-			return 'Unpaid';
-		}
+        /**
+         * Get customer status based on payment history
+         * Priority: Pending > Rejected > Balance (partial) > Paid > Unpaid
+         * Returns: 'Pending' | 'Rejected' | 'Balance' | 'Paid' | 'Unpaid'
+         */
+        public function getCustomerStatus($customer_id)
+        {
+            // First, consider explicit per-invoice statuses that require attention
+            $pendingCheck = $this->dbh->prepare("SELECT 1 FROM payments WHERE customer_id = ? AND status = 'Pending' LIMIT 1");
+            if ($pendingCheck->execute([$customer_id]) && $pendingCheck->fetch()) {
+                return 'Pending';
+            }
+
+            $rejectedCheck = $this->dbh->prepare("SELECT 1 FROM payments WHERE customer_id = ? AND status = 'Rejected' LIMIT 1");
+            if ($rejectedCheck->execute([$customer_id]) && $rejectedCheck->fetch()) {
+                return 'Rejected';
+            }
+
+            // Otherwise, derive the aggregate state from totals
+            $totals = $this->dbh->prepare("
+                SELECT
+                    COALESCE(SUM(amount - balance), 0) as total_paid,
+                    COALESCE(SUM(balance), 0) as total_balance
+                FROM payments
+                WHERE customer_id = ?
+            ");
+            if ($totals->execute([$customer_id])) {
+                $result = $totals->fetch();
+                $total_paid = (float)$result->total_paid;
+                $total_balance = (float)$result->total_balance;
+
+                if ($total_paid > 0 && $total_balance > 0) {
+                    return 'Balance';
+                }
+                if ($total_paid > 0 && $total_balance == 0) {
+                    return 'Paid';
+                }
+                return 'Unpaid';
+            }
+            return 'Unpaid';
+        }
 
 		public function getEmployerById($id)
 		{

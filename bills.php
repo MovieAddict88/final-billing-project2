@@ -69,29 +69,32 @@
 			  	<td><?=$package_name?></td>
 			  	<td><?=$bill->months?></td>
 			  	<td>₱<?=number_format($bill->total, 2)?></td>
-				<td>
-					<?php 
-						$status = $bill->status;
-						$status_class = '';
-						switch($status) {
-							case 'Paid':
-								$status_class = 'label-success';
-								break;
-							case 'Balance':
-								$status_class = 'label-warning';
-								break;
-							case 'Unpaid':
-								$status_class = 'label-danger';
-								break;
-							case 'Pending':
-								$status_class = 'label-info';
-								break;
-							default:
-								$status_class = 'label-default';
-						}
-					?>
-					<span class="label <?=$status_class?>"><?=$status?></span>
-				</td>
+                <td>
+                    <?php 
+                        $status = $bill->status;
+                        $status_upper = strtoupper($status);
+                        // Map to unified badge classes matching overview colors
+                        switch ($status) {
+                            case 'Paid':
+                                $status_class = 'label-status-paid';
+                                break;
+                            case 'Balance':
+                                $status_class = 'label-status-balance';
+                                break;
+                            case 'Pending':
+                                $status_class = 'label-status-pending';
+                                break;
+                            case 'Rejected':
+                                $status_class = 'label-status-rejected';
+                                break;
+                            case 'Unpaid':
+                            default:
+                                $status_class = 'label-status-unpaid';
+                                break;
+                        }
+                    ?>
+                    <span class="label <?=$status_class?>"><?=$status_upper?></span>
+                </td>
 				<td>
 					<?php if ($bill->status == 'Pending'): ?>
 						<button type="button" onClick="view_payment(<?=$bill->id?>)" class="btn btn-warning">View</button>

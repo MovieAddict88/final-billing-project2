@@ -117,22 +117,25 @@
                                         <td>
                                             <?php 
                                                 $status = '';
-                                                $status_class = '';
-                                                if ($bill->status === 'Rejected') {
+                                                if ($bill->status === 'Pending') {
+                                                    $status = 'Pending';
+                                                    $status_class = 'label-status-pending';
+                                                } elseif ($bill->status === 'Rejected') {
                                                     $status = 'Rejected';
-                                                    $status_class = 'label-danger';
+                                                    $status_class = 'label-status-rejected';
                                                 } elseif ($paidAmount > 0 && $balance > 0) {
                                                     $status = 'Balance';
-                                                    $status_class = 'label-warning';
+                                                    $status_class = 'label-status-balance';
                                                 } elseif ($paidAmount > 0 && $balance == 0) {
                                                     $status = 'Paid';
-                                                    $status_class = 'label-success';
+                                                    $status_class = 'label-status-paid';
                                                 } else {
                                                     $status = 'Unpaid';
-                                                    $status_class = 'label-danger';
+                                                    $status_class = 'label-status-unpaid';
                                                 }
+                                                $status_upper = strtoupper($status);
                                             ?>
-                                            <span class="label <?=$status_class?>"><?=$status?></span>
+                                            <span class="label <?=$status_class?>"><?=$status_upper?></span>
                                         </td>
                                         <td><?= $bill->amount ?></td>
                                         <td><a href="pay.php?customer=<?= $customerId ?>&action=bill" class="btn btn-primary">Invoice</a></td>
@@ -176,22 +179,25 @@
                                         <td>
                                             <?php 
                                                 $status = '';
-                                                $status_class = '';
-                                                if ($bill->status === 'Rejected') {
+                                                if ($bill->status === 'Pending') {
+                                                    $status = 'Pending';
+                                                    $status_class = 'label-status-pending';
+                                                } elseif ($bill->status === 'Rejected') {
                                                     $status = 'Rejected';
-                                                    $status_class = 'label-danger';
+                                                    $status_class = 'label-status-rejected';
                                                 } elseif ($paidAmount > 0 && $balance > 0) {
                                                     $status = 'Balance';
-                                                    $status_class = 'label-warning';
+                                                    $status_class = 'label-status-balance';
                                                 } elseif ($paidAmount > 0 && $balance == 0) {
                                                     $status = 'Paid';
-                                                    $status_class = 'label-success';
+                                                    $status_class = 'label-status-paid';
                                                 } else {
                                                     $status = 'Unpaid';
-                                                    $status_class = 'label-danger';
+                                                    $status_class = 'label-status-unpaid';
                                                 }
+                                                $status_upper = strtoupper($status);
                                             ?>
-                                            <span class="label <?=$status_class?>"><?=$status?></span>
+                                            <span class="label <?=$status_class?>"><?=$status_upper?></span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
