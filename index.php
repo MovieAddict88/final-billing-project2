@@ -97,7 +97,9 @@ if ($user_role == 'employer') {
                                         <a href="pay.php?customer=<?php echo $customer->id; ?>&action=bill" class="btn btn-primary btn-sm action-btn">Invoice</a>
                                         <a href="pay.php?customer=<?php echo $customer->id; ?>" class="btn btn-info btn-sm action-btn">Bill</a>
                                         <?php if ($customer->total_balance > 0): ?>
-                                            <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-warning btn-sm action-btn">Pay Balance</a>
+                                            <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-warning btn-sm action-btn">
+                                                <?php echo ($customer->total_paid > 0) ? 'Pay Balance' : 'Pay'; ?>
+                                            </a>
                                         <?php elseif ($customer->status != 'Paid' && $customer->status != 'Partial'): ?>
                                             <a href="manual_payment.php?customer=<?php echo $customer->id; ?>" class="btn btn-success btn-sm action-btn">Pay</a>
                                         <?php endif; ?>
