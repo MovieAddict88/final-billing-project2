@@ -105,6 +105,47 @@
 			return false;
 		}
 
+		/**
+		 * Fetch admins paginated with optional search query.
+		 */
+		public function fetchAdminPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$sql = "SELECT * FROM kp_user WHERE 1=1";
+			$params = [];
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (user_name LIKE ? OR full_name LIKE ? OR email LIKE ? OR contact LIKE ? OR address LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like, $like, $like, $like, $like];
+			}
+			$sql .= " ORDER BY user_id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countAdmin($query = null)
+		{
+			$sql = "SELECT COUNT(*) as total FROM kp_user WHERE 1=1";
+			$params = [];
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (user_name LIKE ? OR full_name LIKE ? OR email LIKE ? OR contact LIKE ? OR address LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like, $like, $like, $like, $like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
+		}
+
+		/* duplicate removed */
+
 		public function getEmployerMonitoringData()
 		{
 			$current_month = date('Y-m');
@@ -518,6 +559,45 @@
 			return false;
 		}
 
+		/**
+		 * Fetch customers paginated with optional search query (global admin list).
+		 */
+		public function fetchCustomersPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$params = [];
+			$sql = "\n                SELECT\n                    c.*,\n                    u.full_name as employer_name,\n                    COALESCE(p.total_paid, 0) as total_paid,\n                    COALESCE(p.total_balance, 0) as total_balance\n                FROM customers c\n                LEFT JOIN kp_user u ON c.employer_id = u.user_id\n                LEFT JOIN (\n                    SELECT customer_id, SUM(amount - balance) as total_paid, SUM(balance) as total_balance\n                    FROM payments GROUP BY customer_id\n                ) p ON c.id = p.customer_id\n                WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (c.full_name LIKE ? OR c.nid LIKE ? OR c.address LIKE ? OR c.email LIKE ? OR c.ip_address LIKE ? OR c.conn_type LIKE ? OR c.contact LIKE ? OR c.login_code LIKE ? OR u.full_name LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like,$like,$like,$like,$like,$like];
+			}
+			$sql .= " ORDER BY c.id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countCustomers($query = null)
+		{
+			$params = [];
+			$sql = "SELECT COUNT(*) as total FROM customers c LEFT JOIN kp_user u ON c.employer_id = u.user_id WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (c.full_name LIKE ? OR c.nid LIKE ? OR c.address LIKE ? OR c.email LIKE ? OR c.ip_address LIKE ? OR c.conn_type LIKE ? OR c.contact LIKE ? OR c.login_code LIKE ? OR u.full_name LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like,$like,$like,$like,$like,$like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
+		}
+
 		public function fetchProductsByCustomerLocation($location)
 		{
 			$request = $this->dbh->prepare("SELECT p.*, COUNT(c.id) as customer_count FROM packages p JOIN customers c ON p.id = c.package_id WHERE ? LIKE CONCAT('%', c.conn_location, '%') GROUP BY p.id");
@@ -606,6 +686,45 @@
 				return $request->fetchAll();
 			}
 			return false;
+		}
+
+		/**
+		 * Fetch products with pagination and optional free-text search.
+		 */
+		public function fetchProductsPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$params = [];
+			$sql = "SELECT * FROM kp_products WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (pro_name LIKE ? OR pro_unit LIKE ? OR pro_category LIKE ? OR pro_details LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like];
+			}
+			$sql .= " ORDER BY pro_id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countProducts($query = null)
+		{
+			$params = [];
+			$sql = "SELECT COUNT(*) as total FROM kp_products WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (pro_name LIKE ? OR pro_unit LIKE ? OR pro_category LIKE ? OR pro_details LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
 		}
 
 		/**
@@ -739,11 +858,19 @@
 				$customer = $this->getCustomerInfo($payment->customer_id);
 				$package_id = $customer ? $customer->package_id : null;
 			}
+			// Ensure employer attribution is correct for e-wallet payments.
+			// If employer_id is missing on the payment row (typical for GCash/PayMaya),
+			// derive it from the owning customer so the ledger shows the employer name.
+			$history_employer_id = $payment->employer_id;
+			if (empty($history_employer_id)) {
+				$customer = isset($customer) ? $customer : $this->getCustomerInfo($payment->customer_id);
+				$history_employer_id = $customer ? $customer->employer_id : null;
+			}
 			$request = $this->dbh->prepare("INSERT INTO payment_history (payment_id, customer_id, employer_id, package_id, r_month, amount, paid_amount, balance_after, payment_method, reference_number, paid_at) VALUES (?,?,?,?,?,?,?,?,?,?, NOW())");
 			return $request->execute([
 				$payment->id,
 				$payment->customer_id,
-				$payment->employer_id,
+				$history_employer_id,
 				$package_id,
 				$payment->r_month,
 				(float)$payment->amount,

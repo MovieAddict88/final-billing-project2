@@ -31,11 +31,8 @@
 	<header class="cd-main-header">
 		<a href="#0" class="cd-logo text-white">Cornerstone | <?php echo ucfirst($_SESSION['user_role'] ?? 'Admin'); ?></a>
 		
-		<!-- <div class="cd-search is-hidden">
-			<form action="#0">
-				<input type="search" placeholder="Search...">
-			</form>
-		</div>  cd-search -->
+        <!-- Global search suggestions container -->
+        <datalist id="global-suggestions"></datalist>
 
 		<a href="#0" class="cd-nav-trigger"><span></span></a>
 
