@@ -226,11 +226,10 @@
                             WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
                             WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
                             WHEN c.dropped = 1 THEN 'Unpaid'
-                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
-                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
-                            WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
-                            WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
-                            ELSE 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                            ELSE 'Balance'
                         END as status
                     FROM
                         customers c
@@ -272,11 +271,10 @@
 						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
 						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
 						WHEN c.dropped = 1 THEN 'Unpaid'
-						WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
-						WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
-						WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
-						WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
-						ELSE 'Unpaid'
+						WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+						WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+						WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+						ELSE 'Balance'
 					END AS status
 				FROM
 					customers c
@@ -418,11 +416,10 @@
                             WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
                             WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
                             WHEN c.dropped = 1 THEN 'Unpaid'
-                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
-                            WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
-                            WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
-                            WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
-                            ELSE 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                            ELSE 'Balance'
                         END as status
                     FROM
                         customers c
@@ -513,7 +510,16 @@
                     c.*,
                     u.full_name as employer_name,
                     COALESCE(p.total_paid, 0) as total_paid,
-                    COALESCE(p.total_balance, 0) as total_balance
+                    COALESCE(p.total_balance, 0) as total_balance,
+                    CASE
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
+                        WHEN c.dropped = 1 THEN 'Unpaid'
+                        WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                        WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                        WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                        ELSE 'Balance'
+                    END AS status
                 FROM
                     customers c
                 LEFT JOIN
@@ -596,7 +602,7 @@
 			$offset = max(0, (int)$offset);
 			$limit = max(1, (int)$limit);
 			$params = [];
-			$sql = "\n                SELECT\n                    c.*,\n                    u.full_name as employer_name,\n                    COALESCE(p.total_paid, 0) as total_paid,\n                    COALESCE(p.total_balance, 0) as total_balance\n                FROM customers c\n                LEFT JOIN kp_user u ON c.employer_id = u.user_id\n                LEFT JOIN (\n                    SELECT customer_id, SUM(amount - balance) as total_paid, SUM(balance) as total_balance\n                    FROM payments GROUP BY customer_id\n                ) p ON c.id = p.customer_id\n                WHERE 1=1";
+			$sql = "\n                SELECT\n                    c.*,\n                    u.full_name as employer_name,\n                    COALESCE(p.total_paid, 0) as total_paid,\n                    COALESCE(p.total_balance, 0) as total_balance,\n                    CASE\n                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'\n                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'\n                        WHEN c.dropped = 1 THEN 'Unpaid'\n                        WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'\n                        WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'\n                        WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'\n                        ELSE 'Balance'\n                    END AS status\n                FROM customers c\n                LEFT JOIN kp_user u ON c.employer_id = u.user_id\n                LEFT JOIN (\n                    SELECT customer_id, SUM(amount - balance) as total_paid, SUM(balance) as total_balance\n                    FROM payments GROUP BY customer_id\n                ) p ON c.id = p.customer_id\n                WHERE 1=1";
 			if ($query !== null && $query !== '') {
 				$sql .= " AND (c.full_name LIKE ? OR c.nid LIKE ? OR c.address LIKE ? OR c.email LIKE ? OR c.ip_address LIKE ? OR c.conn_type LIKE ? OR c.contact LIKE ? OR c.login_code LIKE ? OR u.full_name LIKE ?)";
 				$like = "%" . $query . "%";
@@ -1210,8 +1216,8 @@
 	// Bill generation of a Month
 		public function billGenerate($customer_id, $r_month, $amount){
 			try {
-				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount) VALUES(?,?,?)");
-				return $request->execute([$customer_id, $r_month, $amount]);
+				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount, balance) VALUES(?,?,?,?)");
+				return $request->execute([$customer_id, $r_month, $amount, $amount]);
 			} catch (Exception $e) {
 				return false;
 			}
