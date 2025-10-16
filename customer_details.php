@@ -97,6 +97,7 @@
                                 <th>Amount</th>
                                 <th>Paid</th>
                                 <th>Balance</th>
+                                <th>Status</th>
                                 <th>Total</th>
                                 <th>Action</th>
                             </tr>
@@ -113,13 +114,33 @@
                                         <td><?= $bill->amount ?></td>
                                         <td><?= $paidAmount ?></td>
                                         <td><?= $balance ?></td>
+                                        <td>
+                                            <?php 
+                                                $status = '';
+                                                $status_class = '';
+                                                if ($bill->status === 'Rejected') {
+                                                    $status = 'Rejected';
+                                                    $status_class = 'label-danger';
+                                                } elseif ($paidAmount > 0 && $balance > 0) {
+                                                    $status = 'Balance';
+                                                    $status_class = 'label-warning';
+                                                } elseif ($paidAmount > 0 && $balance == 0) {
+                                                    $status = 'Paid';
+                                                    $status_class = 'label-success';
+                                                } else {
+                                                    $status = 'Unpaid';
+                                                    $status_class = 'label-danger';
+                                                }
+                                            ?>
+                                            <span class="label <?=$status_class?>"><?=$status?></span>
+                                        </td>
                                         <td><?= $bill->amount ?></td>
                                         <td><a href="pay.php?customer=<?= $customerId ?>&action=bill" class="btn btn-primary">Invoice</a></td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center">No billing history found.</td>
+                                    <td colspan="8" class="text-center">No billing history found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -137,6 +158,7 @@
                                     <th>Amount</th>
                                     <th>Paid Amount</th>
                                     <th>Balance</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -151,6 +173,26 @@
                                         <td><?= $bill->amount ?></td>
                                         <td><?= $paidAmount ?></td>
                                         <td><?= $balance ?></td>
+                                        <td>
+                                            <?php 
+                                                $status = '';
+                                                $status_class = '';
+                                                if ($bill->status === 'Rejected') {
+                                                    $status = 'Rejected';
+                                                    $status_class = 'label-danger';
+                                                } elseif ($paidAmount > 0 && $balance > 0) {
+                                                    $status = 'Balance';
+                                                    $status_class = 'label-warning';
+                                                } elseif ($paidAmount > 0 && $balance == 0) {
+                                                    $status = 'Paid';
+                                                    $status_class = 'label-success';
+                                                } else {
+                                                    $status = 'Unpaid';
+                                                    $status_class = 'label-danger';
+                                                }
+                                            ?>
+                                            <span class="label <?=$status_class?>"><?=$status?></span>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
