@@ -146,61 +146,71 @@
 
 		/* duplicate removed */
 
-		public function getEmployerMonitoringData()
-		{
-			$current_month = date('Y-m');
-			$request = $this->dbh->prepare("
-				SELECT
-					u.user_id,
-					u.full_name,
-					u.location,
-					u.profile_pic,
-					COUNT(DISTINCT c.id) AS total_customers,
-					COUNT(DISTINCT CASE WHEN p.status = 'Paid' AND DATE_FORMAT(p.p_date, '%Y-%m') = :current_month THEN c.id END) AS paid_customers,
-					COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND (p.status != 'Paid' OR p.status IS NULL) THEN c.id END) AS unpaid_customers,
-					COALESCE(SUM(CASE WHEN p.status = 'Paid' AND DATE_FORMAT(p.p_date, '%Y-%m') = :current_month THEN p.amount ELSE 0 END), 0) AS monthly_paid_collection,
-					COALESCE(SUM(CASE WHEN p.status = 'Unpaid' AND DATE_FORMAT(p.g_date, '%Y-%m') = :current_month THEN p.amount ELSE 0 END), 0) AS monthly_unpaid_collection,
-					COALESCE(SUM(p.balance), 0) AS total_balance
-				FROM
-					kp_user u
-				LEFT JOIN
-					customers c ON u.user_id = c.employer_id
-				LEFT JOIN
-					payments p ON c.id = p.customer_id
-				WHERE
-					u.role = 'employer'
-				GROUP BY
-					u.user_id, u.full_name, u.location
-				ORDER BY
-					u.full_name
-			");
+	public function getEmployerMonitoringData()
+	{
+		$current_month = date('Y-m');
+		$request = $this->dbh->prepare("
+			SELECT
+				u.user_id,
+				u.full_name,
+				u.location,
+				u.profile_pic,
+				COUNT(DISTINCT c.id) AS total_customers,
+				COUNT(DISTINCT CASE WHEN p.status = 'Paid' AND DATE_FORMAT(p.p_date, '%Y-%m') = :current_month THEN c.id END) AS paid_customers,
+				COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND (p.status != 'Paid' OR p.status IS NULL) THEN c.id END) AS unpaid_customers,
+				COALESCE(
+					(SELECT SUM(ph.paid_amount) 
+					 FROM payment_history ph
+					 INNER JOIN customers c2 ON ph.customer_id = c2.id
+					 WHERE c2.employer_id = u.user_id 
+					 AND DATE_FORMAT(ph.paid_at, '%Y-%m') = :current_month),
+					0
+				) AS monthly_paid_collection,
+				COALESCE(
+					SUM(CASE WHEN DATE_FORMAT(p.g_date, '%Y-%m') = :current_month THEN p.balance ELSE 0 END),
+					0
+				) AS monthly_unpaid_collection,
+				COALESCE(SUM(p.balance), 0) AS total_balance
+			FROM
+				kp_user u
+			LEFT JOIN
+				customers c ON u.user_id = c.employer_id
+			LEFT JOIN
+				payments p ON c.id = p.customer_id
+			WHERE
+				u.role = 'employer'
+			GROUP BY
+				u.user_id, u.full_name, u.location
+			ORDER BY
+				u.full_name
+		");
 
-			$request->execute(['current_month' => $current_month]);
-			$results = $request->fetchAll();
+		$request->execute(['current_month' => $current_month]);
+		$results = $request->fetchAll();
 
-			$data = [];
-			foreach ($results as $row) {
-				$employer_data = [
-					'info' => (object)[
-						'user_id' => $row->user_id,
-						'full_name' => $row->full_name,
-						'location' => $row->location,
-						'profile_pic' => $row->profile_pic,
-					],
-					'stats' => [
-						'total_customers' => (int)$row->total_customers,
-						'paid_customers' => (int)$row->paid_customers,
-						'unpaid_customers' => (int)$row->unpaid_customers,
-						'monthly_paid_collection' => (float)$row->monthly_paid_collection,
-						'monthly_unpaid_collection' => (float)$row->monthly_unpaid_collection,
-						'total_balance' => (float)$row->total_balance,
-					],
-				];
-				$data[] = (object)$employer_data;
-			}
-
-			return $data;
+		$data = [];
+		foreach ($results as $row) {
+			$employer_data = [
+				'info' => (object)[
+					'user_id' => $row->user_id,
+					'full_name' => $row->full_name,
+					'location' => $row->location,
+					'profile_pic' => $row->profile_pic,
+				],
+				'stats' => [
+					'total_customers' => (int)$row->total_customers,
+					'paid_customers' => (int)$row->paid_customers,
+					'unpaid_customers' => (int)$row->unpaid_customers,
+					'monthly_paid_collection' => (float)$row->monthly_paid_collection,
+					'monthly_unpaid_collection' => (float)$row->monthly_unpaid_collection,
+					'total_balance' => (float)$row->total_balance,
+				],
+			];
+			$data[] = (object)$employer_data;
 		}
+
+		return $data;
+	}
 
 		public function getEmployerNameById($id)
 		{
