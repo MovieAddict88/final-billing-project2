@@ -81,7 +81,7 @@
 <div class="container">
         <?php
             $info = $admins->getCustomerInfo($id); 
-            if (isset($info) && sizeof($info) > 0) {
+            if (isset($info) && count($info) > 0) {
             $package_id = $info->package_id;
             $packageInfo = $admins->getPackageInfo($package_id);
         ?>
@@ -111,7 +111,7 @@
                 <?php
                     $bills = $admins->fetchPaymentSlip($id);
                     $amount = $_POST['amount'];
-                    if (isset($bills) && sizeof($bills) > 0){
+                    if (isset($bills) && count($bills) > 0){
                         
                 ?>
                 <tr>

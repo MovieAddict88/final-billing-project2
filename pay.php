@@ -110,7 +110,7 @@
         <?php
             $has_unpaid = false;
             $bills = $admins->fetchAllIndividualBill($id);
-            if (isset($bills) && sizeof($bills) > 0) {
+            if (isset($bills) && count($bills) > 0) {
                 foreach ($bills as $bill) {
                     if ($bill->status == 'Unpaid') {
                         $has_unpaid = true;
@@ -145,7 +145,7 @@
 
                 echo '<tr><td><b>Plan</b></td><td>'.htmlspecialchars($packageName).'</td></tr>';
 
-                if (isset($bills) && sizeof($bills) > 0){
+                if (isset($bills) && count($bills) > 0){
                     foreach ($bills as $bill){
                         $year = date('Y', strtotime($bill->g_date));
                         $monthNum = date('n', strtotime($bill->g_date)); // aligns with generation month

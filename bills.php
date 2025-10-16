@@ -37,7 +37,7 @@
 		<div class="col-md-12 col-sm-12" id="bill_table">
 			<?php
 			  $billing = $admins->fetchBilling();
-			  if (isset($billing) && sizeof($billing) > 0){ ?>
+			  if (isset($billing) && count($billing) > 0){ ?>
 				<div class="table-responsive">
 				<table class="table table-striped table-bordered">
 				<thead class="thead-inverse">
@@ -71,26 +71,9 @@
 			  	<td>₱<?=number_format($bill->total, 2)?></td>
 				<td>
 					<?php 
-						$status = $bill->status;
-						$status_class = '';
-						switch($status) {
-							case 'Paid':
-								$status_class = 'label-success';
-								break;
-							case 'Balance':
-								$status_class = 'label-warning';
-								break;
-							case 'Unpaid':
-								$status_class = 'label-danger';
-								break;
-							case 'Pending':
-								$status_class = 'label-info';
-								break;
-							default:
-								$status_class = 'label-default';
-						}
+						$status_class = $admins->getStatusClass($bill->status);
 					?>
-					<span class="label <?=$status_class?>"><?=$status?></span>
+					<span class="label <?=$status_class?>"><?=$bill->status?></span>
 				</td>
 				<td>
 					<?php if ($bill->status == 'Pending'): ?>
