@@ -11,12 +11,57 @@
     word-break: break-word;          /* break long words when needed */
     overflow-wrap: anywhere;         /* allow wrapping in any point if necessary */
     white-space: normal;             /* avoid nowrap from third-party styles */
+    vertical-align: middle;          /* better vertical alignment */
+    padding: 8px 12px;               /* consistent padding */
+}
+
+/* Override jquery.bootgrid.css's `white-space: nowrap` for table cells */
+.bootgrid-table td {
+    white-space: normal !important;
 }
 
 /* Make all responsive table containers horizontally scrollable on any viewport */
 .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Professional table styling */
+.table {
+    margin-bottom: 0;
+    font-size: 14px;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+}
+
+/* Button styling for action column */
+.btn-edit, .btn-delete {
+    margin: 2px;
+    font-size: 12px;
+    padding: 4px 8px;
 }
 
 /* Avoid overlapping when columns get tight on medium screens */
@@ -48,4 +93,41 @@
 .panel .panel-body {
     overflow-x: auto;
     overflow-y: visible;
+}
+
+/* Mobile-specific table adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 12px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 6px 8px;
+    }
+    
+    .btn-action {
+        width: 70px !important;
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}
+
+/* Ensure table headers are visible during horizontal scroll */
+.table-responsive::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
