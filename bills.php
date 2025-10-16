@@ -69,7 +69,29 @@
 			  	<td><?=$package_name?></td>
 			  	<td><?=$bill->months?></td>
 			  	<td>₱<?=number_format($bill->total, 2)?></td>
-				<td><?=$bill->status?></td>
+				<td>
+					<?php 
+						$status = $bill->status;
+						$status_class = '';
+						switch($status) {
+							case 'Paid':
+								$status_class = 'label-success';
+								break;
+							case 'Balance':
+								$status_class = 'label-warning';
+								break;
+							case 'Unpaid':
+								$status_class = 'label-danger';
+								break;
+							case 'Pending':
+								$status_class = 'label-info';
+								break;
+							default:
+								$status_class = 'label-default';
+						}
+					?>
+					<span class="label <?=$status_class?>"><?=$status?></span>
+				</td>
 				<td>
 					<?php if ($bill->status == 'Pending'): ?>
 						<button type="button" onClick="view_payment(<?=$bill->id?>)" class="btn btn-warning">View</button>

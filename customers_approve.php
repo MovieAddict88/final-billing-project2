@@ -180,6 +180,26 @@
 					<td class="search"><?=$customer->email?></td>
 					<td class="search"><?=$customer->contact?></td>
 					<td class="search"><?=$customer->conn_type?></td>
+                    <td class="search">
+                        <?php 
+                            $status = $admins->getCustomerStatus($customer->id);
+                            $status_class = '';
+                            switch($status) {
+                                case 'Paid':
+                                    $status_class = 'label-success';
+                                    break;
+                                case 'Balance':
+                                    $status_class = 'label-warning';
+                                    break;
+                                case 'Unpaid':
+                                    $status_class = 'label-danger';
+                                    break;
+                                default:
+                                    $status_class = 'label-default';
+                            }
+                        ?>
+                        <span class="label <?=$status_class?>"><?=$status?></span>
+                    </td>
                     <td class="search"><?=number_format($customer->total_paid, 2)?></td>
                     <td class="search"><?=number_format($customer->total_balance, 2)?></td>
 					<td class="search"><?=$customer->login_code?></td>
@@ -189,7 +209,7 @@
             // Pagination controls row
             $prevDisabled = ($page <= 1) ? 'disabled' : '';
             $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
-            $colspan = 14; // number of table columns
+            $colspan = 15; // number of table columns
             ?>
             <tr class="pagination-row" data-page="<?=$page?>" data-total="<?=$total?>" data-limit="<?=$limit?>" data-query="<?=htmlspecialchars($q)?>">
                 <td colspan="<?=$colspan?>" class="text-center">
