@@ -260,49 +260,108 @@
 			return false;
 		}
 
-		public function fetchCustomersByEmployer($employer_id, $limit = 10)
-		{
-			$limit = (int) $limit;
-			$request = $this->dbh->prepare("
-				SELECT
-					c.*,
-					COALESCE(p.total_paid, 0) as total_paid,
-					COALESCE(p.total_balance, 0) as total_balance,
-					CASE
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
-						WHEN c.dropped = 1 THEN 'Unpaid'
-						WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
-						WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
-						WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
-						WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
-						ELSE 'Unpaid'
-					END AS status
+	public function fetchCustomersByEmployer($employer_id, $limit = 10)
+	{
+		$limit = (int) $limit;
+		$request = $this->dbh->prepare("
+			SELECT
+				c.*,
+				COALESCE(p.total_paid, 0) as total_paid,
+				COALESCE(p.total_balance, 0) as total_balance,
+				CASE
+					WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
+					WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
+					WHEN c.dropped = 1 THEN 'Unpaid'
+					WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
+					WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+					WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
+					WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
+					ELSE 'Unpaid'
+				END AS status
+			FROM
+				customers c
+			LEFT JOIN
+				(SELECT
+					customer_id,
+					SUM(amount - balance) as total_paid,
+					SUM(balance) as total_balance
 				FROM
-					customers c
-				LEFT JOIN
-					(SELECT
-						customer_id,
-						SUM(amount - balance) as total_paid,
-						SUM(balance) as total_balance
-					FROM
-						payments
-					GROUP BY
-						customer_id
-					) p ON c.id = p.customer_id
-				WHERE
-					c.employer_id = ?
-				ORDER BY
-					c.id DESC
-				LIMIT ?
-			");
-			$request->bindValue(1, $employer_id, PDO::PARAM_INT);
-			$request->bindValue(2, $limit, PDO::PARAM_INT);
-			if ($request->execute()) {
-				return $request->fetchAll();
-			}
-			return false;
+					payments
+				GROUP BY
+					customer_id
+				) p ON c.id = p.customer_id
+			WHERE
+				c.employer_id = ?
+			ORDER BY
+				c.id DESC
+			LIMIT ?
+		");
+		$request->bindValue(1, $employer_id, PDO::PARAM_INT);
+		$request->bindValue(2, $limit, PDO::PARAM_INT);
+		if ($request->execute()) {
+			return $request->fetchAll();
 		}
+		return false;
+	}
+
+	/**
+	 * Fetch customers by employer with pagination support
+	 */
+	public function fetchCustomersByEmployerPage($employer_id, $offset = 0, $limit = 10)
+	{
+		$offset = max(0, (int)$offset);
+		$limit = max(1, (int)$limit);
+		$request = $this->dbh->prepare("
+			SELECT
+				c.*,
+				COALESCE(p.total_paid, 0) as total_paid,
+				COALESCE(p.total_balance, 0) as total_balance,
+				CASE
+					WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
+					WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
+					WHEN c.dropped = 1 THEN 'Unpaid'
+					WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) > 0 THEN 'Balance'
+					WHEN COALESCE(p.total_balance, 0) > 0 AND COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+					WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Paid'
+					WHEN p.total_paid IS NULL AND p.total_balance IS NULL THEN 'Unpaid'
+					ELSE 'Unpaid'
+				END AS status
+			FROM
+				customers c
+			LEFT JOIN
+				(SELECT
+					customer_id,
+					SUM(amount - balance) as total_paid,
+					SUM(balance) as total_balance
+				FROM
+					payments
+				GROUP BY
+					customer_id
+				) p ON c.id = p.customer_id
+			WHERE
+				c.employer_id = ?
+			ORDER BY
+				c.id DESC
+			LIMIT $offset, $limit
+		");
+		if ($request->execute([$employer_id])) {
+			return $request->fetchAll();
+		}
+		return false;
+	}
+
+	/**
+	 * Count total customers for an employer
+	 */
+	public function countCustomersByEmployer($employer_id)
+	{
+		$request = $this->dbh->prepare("SELECT COUNT(*) as total FROM customers WHERE employer_id = ?");
+		if ($request->execute([$employer_id])) {
+			$row = $request->fetch();
+			return $row ? (int)$row->total : 0;
+		}
+		return 0;
+	}
 
 		public function fetchAllIndividualBill($customer_id, $status = null)
 		{
