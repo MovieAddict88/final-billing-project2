@@ -48,26 +48,25 @@
 				<?php session::destroy('errors');
 				} ?>
 			</div>
-                <div class="table-responsive">
-				<div class="table-responsive">
-				<table class="table table-striped" id="grid-basic">
+                <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+				<table class="table table-striped table-bordered" id="grid-basic" style="min-width: 1200px; width: 100%;">
 					<thead class="thead-inverse">
 						<tr class="info">
-							<th>ID </th>
-							<th>Action</th>
-							<th>Name</th>
-							<th>Employer</th>
-							<th>NID</th>
-							<th>ADDRESS</th>
-							<th>Package</th>
-							<th>IP </th>
-							<th>Email </th>
-							<th>Contact</th>
-							<th>Type</th>
-                            <th>Status</th>
-                            <th>Amount Paid</th>
-                            <th>Balance</th>
-							<th>Login Code</th>
+							<th style="min-width: 50px;">ID</th>
+							<th style="min-width: 100px;">Action</th>
+							<th style="min-width: 150px;">Name</th>
+							<th style="min-width: 150px;">Employer</th>
+							<th style="min-width: 120px;">NID</th>
+							<th style="min-width: 200px;">ADDRESS</th>
+							<th style="min-width: 120px;">Package</th>
+							<th style="min-width: 120px;">IP</th>
+							<th style="min-width: 200px;">Email</th>
+							<th style="min-width: 120px;">Contact</th>
+							<th style="min-width: 100px;">Type</th>
+                            <th style="min-width: 100px;">Status</th>
+                            <th style="min-width: 120px;">Amount Paid</th>
+                            <th style="min-width: 120px;">Balance</th>
+							<th style="min-width: 150px;">Login Code</th>
 						</tr>
 					</thead>
 					<tbody>
