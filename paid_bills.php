@@ -35,6 +35,7 @@
 				    <th>Package</th>
 				    <th>Months</th>
 				    <th>Amounts</th>
+				    <th>Status</th>
 				    <th>Balance</th>
 				    <th>Disconnection</th>
 				    <th>Transaction</th>
@@ -53,6 +54,14 @@
                             $package_name = $packageInfo->name;
                             
                             $bills = $admins->fetchPaymentSlip($customer_id);
+                            $customer_status = $admins->getCustomerStatus($customer_id);
+                            $customer_payments = $admins->fetchAllIndividualBill($customer_id);
+                            $total_balance = 0;
+                            if ($customer_payments) {
+                                foreach ($customer_payments as $payment) {
+                                    $total_balance += (float)$payment->balance;
+                                }
+                            }
                             if (isset($bills) && sizeof($bills) > 0 && !empty($bills)){
                             ?>
                             <tr>
@@ -61,7 +70,26 @@
                                 <td><?=$package_name?></td>
                                 <td><?=$bills->bill_month?></td>
                                 <td><?=$bills->bill_amount?></td>
-                                <td>₱<?=number_format($balance, 2)?></td>
+                                <td>
+                                    <?php 
+                                        $status_class = '';
+                                        switch($customer_status) {
+                                            case 'Paid':
+                                                $status_class = 'label-success';
+                                                break;
+                                            case 'Balance':
+                                                $status_class = 'label-warning';
+                                                break;
+                                            case 'Unpaid':
+                                                $status_class = 'label-danger';
+                                                break;
+                                            default:
+                                                $status_class = 'label-default';
+                                        }
+                                    ?>
+                                    <span class="label <?=$status_class?>"><?=$customer_status?></span>
+                                </td>
+                                <td>₱<?=number_format($total_balance, 2)?></td>
                                 <td><button onclick="getReceipt(<?=$customer_id?>)" class="btn btn-primary">Disconnection</button></td>
                                 <td><button onclick="getTracsaction(<?=$customer_id?>)" class="btn btn-primary">Transaction</button></td>
                             </tr>

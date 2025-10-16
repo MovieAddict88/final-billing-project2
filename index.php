@@ -275,10 +275,11 @@ include 'includes/footer.php';
 
                 var statusConfig = {
                     'Paid': { label: 'Paid', color: '#28a745', order: 1 },
-                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 2 },
-                    'Rejected': { label: 'Reject', color: '#dc3545', order: 3 },
-                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 4 },
-                    'Pending': { label: 'Pending', color: '#ffc107', order: 5 }
+                    'Balance': { label: 'Balance', color: '#fd7e14', order: 2 },
+                    'Unpaid': { label: 'Unpaid', color: '#8B0000', order: 3 },
+                    'Rejected': { label: 'Reject', color: '#dc3545', order: 4 },
+                    'Prospects': { label: 'Prospect', color: '#6c757d', order: 5 },
+                    'Pending': { label: 'Pending', color: '#ffc107', order: 6 }
                 };
 
                 var total = data.reduce((acc, item) => acc + parseInt(item.count), 0);
@@ -448,7 +449,24 @@ include 'includes/footer.php';
                         },
                         animation: {
                             duration: 1000,
-                            easing: 'easeInOutQuart'
+                            easing: 'easeInOutQuart',
+                            onComplete: function() {
+                                var chartInstance = this.chart;
+                                var ctx = chartInstance.ctx;
+                                ctx.textAlign = 'left';
+                                ctx.font = "bold 12px Arial";
+                                ctx.fillStyle = "#333";
+
+                                this.data.datasets.forEach(function(dataset, i) {
+                                    var meta = chartInstance.controller.getDatasetMeta(i);
+                                    meta.data.forEach(function(bar, index) {
+                                        var data = dataset.data[index];
+                                        if (data > 0) {
+                                            ctx.fillText(data, bar._model.x + 5, bar._model.y + 4);
+                                        }
+                                    });
+                                });
+                            }
                         }
                     }
                 });

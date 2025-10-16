@@ -21,13 +21,24 @@ $payment = $admins->getPaymentById($payment_id); // Function exists in admin-cla
 $due_amount = ($payment && $payment->balance > 0) ? (float)$payment->balance : (float)$payment->amount;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $amount = $_POST['amount'];
-    $payment_method = $_POST['payment_method'];
-    $reference_number = $_POST['reference_number'];
-    // generic wallet fields; backend stores amount in gcash_name and account number in gcash_number
-    $gcash_name = isset($_POST['wallet_account_name']) ? $_POST['wallet_account_name'] : (isset($_POST['gcash_name']) ? $_POST['gcash_name'] : null);
-    $gcash_number = isset($_POST['wallet_account_number']) ? $_POST['wallet_account_number'] : (isset($_POST['gcash_number']) ? $_POST['gcash_number'] : null);
-    $screenshot = isset($_FILES['screenshot']) ? $_FILES['screenshot'] : null;
+$amount = $_POST['amount'];
+$payment_method = $_POST['payment_method'];
+$reference_number = $_POST['reference_number'];
+// Store the submitted amount in gcash_name so admin can see this submission amount
+// Retain wallet account number in gcash_number
+$gcash_name = (is_numeric($amount) ? (float)$amount : null);
+// Combine wallet account name and number into JSON for storage (backward compatible)
+$wallet_account_name = isset($_POST['wallet_account_name']) ? trim($_POST['wallet_account_name']) : null;
+$wallet_account_number = isset($_POST['wallet_account_number']) ? trim($_POST['wallet_account_number']) : (isset($_POST['gcash_number']) ? trim($_POST['gcash_number']) : null);
+if (!empty($wallet_account_name) || !empty($wallet_account_number)) {
+    $gcash_number = json_encode([
+        'name' => $wallet_account_name ?: null,
+        'number' => $wallet_account_number ?: null,
+    ]);
+} else {
+    $gcash_number = null;
+}
+$screenshot = isset($_FILES['screenshot']) ? $_FILES['screenshot'] : null;
 
     if ($admins->processPayment($payment_id, $payment_method, $reference_number, $amount, $gcash_name, $gcash_number, $screenshot)) {
         header('Location: customer_dashboard.php?payment=success');

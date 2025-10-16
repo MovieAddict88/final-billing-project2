@@ -91,10 +91,17 @@
 			$commons->redirectTo(SITE_PATH.'user.php');
 		}
 
-	}else{
-		$users = $admins->fetchAdmin(); 
-		if (isset($users) && sizeof($users) > 0) {
-			foreach ($users as $user){ ?>
+    }else{
+        // Pagination and search
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 10;
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+        $offset = ($page - 1) * $limit;
+        $users = $admins->fetchAdminPage($offset, $limit, $q); 
+        $total = $admins->countAdmin($q);
+        $totalPages = ($limit > 0) ? (int)ceil($total / $limit) : 1;
+        if (isset($users) && sizeof($users) > 0) {
+            foreach ($users as $user){ ?>
 				<tr>
 					<td scope="row"><?=$user->user_id ?></td>
 					<td>
@@ -149,8 +156,19 @@
 					<td class="search"><?=$user->contact?></td>
 					<td class="search"><?=$user->address?></td>
 				</tr>
-			<?php
-			}
-		}
-	}
+            <?php
+            }
+            $prevDisabled = ($page <= 1) ? 'disabled' : '';
+            $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+            ?>
+            <tr class="pagination-row" data-page="<?=$page?>" data-total="<?=$total?>" data-limit="<?=$limit?>" data-query="<?=htmlspecialchars($q)?>">
+                <td colspan="7" class="text-center">
+                    <button class="btn btn-default btn-sm page-prev" <?=$prevDisabled?>>Prev</button>
+                    <span class="mx-2">Page <?=$page?> of <?=$totalPages?></span>
+                    <button class="btn btn-default btn-sm page-next" <?=$nextDisabled?>>Next</button>
+                </td>
+            </tr>
+            <?php
+        }
+    }
 ?>

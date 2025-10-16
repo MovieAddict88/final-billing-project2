@@ -105,6 +105,47 @@
 			return false;
 		}
 
+		/**
+		 * Fetch admins paginated with optional search query.
+		 */
+		public function fetchAdminPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$sql = "SELECT * FROM kp_user WHERE 1=1";
+			$params = [];
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (user_name LIKE ? OR full_name LIKE ? OR email LIKE ? OR contact LIKE ? OR address LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like, $like, $like, $like, $like];
+			}
+			$sql .= " ORDER BY user_id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countAdmin($query = null)
+		{
+			$sql = "SELECT COUNT(*) as total FROM kp_user WHERE 1=1";
+			$params = [];
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (user_name LIKE ? OR full_name LIKE ? OR email LIKE ? OR contact LIKE ? OR address LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like, $like, $like, $like, $like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
+		}
+
+		/* duplicate removed */
+
 		public function getEmployerMonitoringData()
 		{
 			$current_month = date('Y-m');
@@ -171,35 +212,43 @@
 			return null;
 		}
 
-		public function fetchCustomerStatusByEmployer($employer_id)
-		{
-			$request = $this->dbh->prepare("
-				SELECT
-					status,
-					COUNT(*) as count
-				FROM (
-					SELECT
-						c.id,
-						CASE
-							WHEN c.dropped = 1 OR EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Unpaid') THEN 'Unpaid'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Pending') THEN 'Pending'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Rejected') THEN 'Rejected'
-							WHEN NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id) THEN 'Prospects'
-							ELSE 'Paid'
-						END as status
-					FROM
-						customers c
-					WHERE
-						c.employer_id = ?
-				) as customer_status
-				GROUP BY
-					status
-			");
-			if ($request->execute([$employer_id])) {
-				return $request->fetchAll();
-			}
-			return false;
-		}
+        public function fetchCustomerStatusByEmployer($employer_id)
+        {
+            // Fixed status logic: Unpaid (new client), Paid (full payment), Balance (initial payment)
+            $request = $this->dbh->prepare("
+                SELECT
+                    status,
+                    COUNT(*) as count
+                FROM (
+                    SELECT
+                        c.id,
+                        CASE
+                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
+                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN c.dropped = 1 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                            ELSE 'Balance'
+                        END as status
+                    FROM
+                        customers c
+                    LEFT JOIN (
+                        SELECT customer_id, SUM(amount - balance) AS total_paid, SUM(balance) AS total_balance
+                        FROM payments
+                        GROUP BY customer_id
+                    ) p ON p.customer_id = c.id
+                    WHERE
+                        c.employer_id = ?
+                ) as customer_status
+                GROUP BY
+                    status
+            ");
+            if ($request->execute([$employer_id])) {
+                return $request->fetchAll();
+            }
+            return false;
+        }
 
 		public function fetchProductsByEmployer($employer_id)
 		{
@@ -219,14 +268,13 @@
 					COALESCE(p.total_paid, 0) as total_paid,
 					COALESCE(p.total_balance, 0) as total_balance,
 					CASE
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Unpaid') THEN 'Unpaid'
 						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
 						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
 						WHEN c.dropped = 1 THEN 'Unpaid'
-						WHEN COALESCE(p.total_balance, 0) > 0 THEN 'Initial'
-						WHEN COALESCE(p.total_paid, 0) > 0 AND COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
-						WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id) THEN 'Unpaid'
-						ELSE 'Prospects'
+						WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+						WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+						WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+						ELSE 'Balance'
 					END AS status
 				FROM
 					customers c
@@ -269,6 +317,35 @@
 			return false;
 		}
 
+		/**
+		 * Get customer status based on payment history
+		 * Returns: 'Unpaid', 'Balance', or 'Paid'
+		 */
+		public function getCustomerStatus($customer_id)
+		{
+			$request = $this->dbh->prepare("
+				SELECT
+					COALESCE(SUM(amount - balance), 0) as total_paid,
+					COALESCE(SUM(balance), 0) as total_balance
+				FROM payments
+				WHERE customer_id = ?
+			");
+			if ($request->execute([$customer_id])) {
+				$result = $request->fetch();
+				$total_paid = (float)$result->total_paid;
+				$total_balance = (float)$result->total_balance;
+				
+				if ($total_paid > 0 && $total_balance > 0) {
+					return 'Balance';
+				} elseif ($total_paid > 0 && $total_balance == 0) {
+					return 'Paid';
+				} else {
+					return 'Unpaid';
+				}
+			}
+			return 'Unpaid';
+		}
+
 		public function getEmployerById($id)
 		{
 			$request = $this->dbh->prepare("SELECT * FROM kp_user WHERE user_id = ?");
@@ -307,7 +384,7 @@
 				$details['bills'] = $request->fetchAll();
 			}
 
-			// Fetch transactions
+			// Fetch transactions (legacy summary slips) and detailed ledger
 			$request = $this->dbh->prepare("SELECT * FROM billings WHERE customer_id = ?");
 			if ($request->execute([$customerId])) {
 				$details['transactions'] = $request->fetchAll();
@@ -325,39 +402,47 @@
 			return false;
 		}
 
-		public function fetchCustomerStatusByLocation($location)
-		{
-			$request = $this->dbh->prepare("
-				SELECT
-					status,
-					COUNT(*) as count
-				FROM (
-					SELECT
-						c.id,
-						CASE
-							WHEN c.dropped = 1 OR EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Unpaid') THEN 'Unpaid'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Pending') THEN 'Pending'
-							WHEN EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id AND p.status = 'Rejected') THEN 'Rejected'
-							WHEN NOT EXISTS (SELECT 1 FROM payments p WHERE p.customer_id = c.id) THEN 'Prospects'
-							ELSE 'Paid'
-						END as status
-					FROM
-						customers c
-					WHERE
-						? LIKE CONCAT('%', c.conn_location, '%')
-				) as customer_status
-				GROUP BY
-					status
-			");
-			if ($request->execute([$location])) {
-				return $request->fetchAll();
-			}
-			return false;
-		}
+        public function fetchCustomerStatusByLocation($location)
+        {
+            // Fixed status logic: Unpaid (new client), Paid (full payment), Balance (initial payment)
+            $request = $this->dbh->prepare("
+                SELECT
+                    status,
+                    COUNT(*) as count
+                FROM (
+                    SELECT
+                        c.id,
+                        CASE
+                            WHEN EXISTS (SELECT 1 FROM payments px WHERE px.customer_id = c.id AND px.status = 'Pending') THEN 'Pending'
+                            WHEN EXISTS (SELECT 1 FROM payments rx WHERE rx.customer_id = c.id AND rx.status = 'Rejected') THEN 'Rejected'
+                            WHEN c.dropped = 1 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                            WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                            WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                            ELSE 'Balance'
+                        END as status
+                    FROM
+                        customers c
+                    LEFT JOIN (
+                        SELECT customer_id, SUM(amount - balance) AS total_paid, SUM(balance) AS total_balance
+                        FROM payments
+                        GROUP BY customer_id
+                    ) p ON p.customer_id = c.id
+                    WHERE
+                        ? LIKE CONCAT('%', c.conn_location, '%')
+                ) as customer_status
+                GROUP BY
+                    status
+            ");
+            if ($request->execute([$location])) {
+                return $request->fetchAll();
+            }
+            return false;
+        }
 
 		public function fetchCustomerCountByLocation()
 		{
-			$request = $this->dbh->prepare("SELECT conn_location, COUNT(*) as count FROM customers GROUP BY conn_location");
+			$request = $this->dbh->prepare("SELECT conn_location, COUNT(*) as count FROM customers WHERE dropped = 0 GROUP BY conn_location");
 			if ($request->execute()) {
 				return $request->fetchAll();
 			}
@@ -425,7 +510,16 @@
                     c.*,
                     u.full_name as employer_name,
                     COALESCE(p.total_paid, 0) as total_paid,
-                    COALESCE(p.total_balance, 0) as total_balance
+                    COALESCE(p.total_balance, 0) as total_balance,
+                    CASE
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'
+                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'
+                        WHEN c.dropped = 1 THEN 'Unpaid'
+                        WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'
+                        WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'
+                        WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'
+                        ELSE 'Balance'
+                    END AS status
                 FROM
                     customers c
                 LEFT JOIN
@@ -498,6 +592,45 @@
 				return $request->fetchAll();
 			}
 			return false;
+		}
+
+		/**
+		 * Fetch customers paginated with optional search query (global admin list).
+		 */
+		public function fetchCustomersPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$params = [];
+			$sql = "\n                SELECT\n                    c.*,\n                    u.full_name as employer_name,\n                    COALESCE(p.total_paid, 0) as total_paid,\n                    COALESCE(p.total_balance, 0) as total_balance,\n                    CASE\n                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Pending') THEN 'Pending'\n                        WHEN EXISTS (SELECT 1 FROM payments WHERE customer_id = c.id AND status = 'Rejected') THEN 'Rejected'\n                        WHEN c.dropped = 1 THEN 'Unpaid'\n                        WHEN COALESCE(p.total_paid, 0) = 0 AND COALESCE(p.total_balance, 0) = 0 THEN 'Unpaid'\n                        WHEN COALESCE(p.total_balance, 0) <= 0 THEN 'Paid'\n                        WHEN COALESCE(p.total_paid, 0) = 0 THEN 'Unpaid'\n                        ELSE 'Balance'\n                    END AS status\n                FROM customers c\n                LEFT JOIN kp_user u ON c.employer_id = u.user_id\n                LEFT JOIN (\n                    SELECT customer_id, SUM(amount - balance) as total_paid, SUM(balance) as total_balance\n                    FROM payments GROUP BY customer_id\n                ) p ON c.id = p.customer_id\n                WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (c.full_name LIKE ? OR c.nid LIKE ? OR c.address LIKE ? OR c.email LIKE ? OR c.ip_address LIKE ? OR c.conn_type LIKE ? OR c.contact LIKE ? OR c.login_code LIKE ? OR u.full_name LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like,$like,$like,$like,$like,$like];
+			}
+			$sql .= " ORDER BY c.id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countCustomers($query = null)
+		{
+			$params = [];
+			$sql = "SELECT COUNT(*) as total FROM customers c LEFT JOIN kp_user u ON c.employer_id = u.user_id WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (c.full_name LIKE ? OR c.nid LIKE ? OR c.address LIKE ? OR c.email LIKE ? OR c.ip_address LIKE ? OR c.conn_type LIKE ? OR c.contact LIKE ? OR c.login_code LIKE ? OR u.full_name LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like,$like,$like,$like,$like,$like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
 		}
 
 		public function fetchProductsByCustomerLocation($location)
@@ -588,6 +721,45 @@
 				return $request->fetchAll();
 			}
 			return false;
+		}
+
+		/**
+		 * Fetch products with pagination and optional free-text search.
+		 */
+		public function fetchProductsPage($offset = 0, $limit = 10, $query = null)
+		{
+			$offset = max(0, (int)$offset);
+			$limit = max(1, (int)$limit);
+			$params = [];
+			$sql = "SELECT * FROM kp_products WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (pro_name LIKE ? OR pro_unit LIKE ? OR pro_category LIKE ? OR pro_details LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like];
+			}
+			$sql .= " ORDER BY pro_id DESC LIMIT $offset, $limit";
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function countProducts($query = null)
+		{
+			$params = [];
+			$sql = "SELECT COUNT(*) as total FROM kp_products WHERE 1=1";
+			if ($query !== null && $query !== '') {
+				$sql .= " AND (pro_name LIKE ? OR pro_unit LIKE ? OR pro_category LIKE ? OR pro_details LIKE ?)";
+				$like = "%" . $query . "%";
+				$params = [$like,$like,$like,$like];
+			}
+			$request = $this->dbh->prepare($sql);
+			if ($request->execute($params)) {
+				$row = $request->fetch();
+				return $row ? (int)$row->total : 0;
+			}
+			return 0;
 		}
 
 		/**
@@ -704,15 +876,76 @@
 			return false;
 		}
 
-        public function processPayment($payment_id, $payment_method, $reference_number, $amount_paid = null, $gcash_name = null, $gcash_number = null, $screenshot = null)
+		/**
+		 * Insert a row into payment_history to keep an immutable ledger of payments.
+		 */
+		public function insertPaymentHistoryEntry($payment, $paid_amount)
+		{
+			if (!$payment) {
+				return false;
+			}
+			$paid_amount = (float)$paid_amount;
+			if ($paid_amount <= 0) {
+				return false;
+			}
+			$package_id = $payment->package_id;
+			if (empty($package_id)) {
+				$customer = $this->getCustomerInfo($payment->customer_id);
+				$package_id = $customer ? $customer->package_id : null;
+			}
+			// Ensure employer attribution is correct for e-wallet payments.
+			// If employer_id is missing on the payment row (typical for GCash/PayMaya),
+			// derive it from the owning customer so the ledger shows the employer name.
+			$history_employer_id = $payment->employer_id;
+			if (empty($history_employer_id)) {
+				$customer = isset($customer) ? $customer : $this->getCustomerInfo($payment->customer_id);
+				$history_employer_id = $customer ? $customer->employer_id : null;
+			}
+			$request = $this->dbh->prepare("INSERT INTO payment_history (payment_id, customer_id, employer_id, package_id, r_month, amount, paid_amount, balance_after, payment_method, reference_number, paid_at) VALUES (?,?,?,?,?,?,?,?,?,?, NOW())");
+			return $request->execute([
+				$payment->id,
+				$payment->customer_id,
+				$history_employer_id,
+				$package_id,
+				$payment->r_month,
+				(float)$payment->amount,
+				$paid_amount,
+				(float)$payment->balance,
+				$payment->payment_method,
+				$payment->reference_number,
+			]);
+		}
+
+		public function fetchPaymentHistoryByCustomer($customer_id)
+		{
+			$request = $this->dbh->prepare("
+				SELECT h.*, pkg.name AS package_name, u.full_name AS employer_name
+				FROM payment_history h
+				LEFT JOIN packages pkg ON h.package_id = pkg.id
+				LEFT JOIN kp_user u ON h.employer_id = u.user_id
+				WHERE h.customer_id = ?
+				ORDER BY h.paid_at DESC, h.id DESC
+			");
+			if ($request->execute([$customer_id])) {
+				return $request->fetchAll();
+			}
+			return false;
+		}
+
+		public function processPayment($payment_id, $payment_method, $reference_number, $amount_paid = null, $gcash_name = null, $gcash_number = null, $screenshot = null)
 		{
 			$payment = $this->getPaymentById($payment_id);
 			if (!$payment) {
 				return false;
 			}
 
-			$due_amount = ($payment->balance > 0) ? (float)$payment->balance : (float)$payment->amount;
-			$new_balance = $due_amount - (float)$amount_paid;
+            $due_amount = ($payment->balance > 0) ? (float)$payment->balance : (float)$payment->amount;
+            $paid_now = max(0.0, (float)$amount_paid);
+            // Clamp to not go below zero
+            if ($paid_now > $due_amount) {
+                $paid_now = $due_amount;
+            }
+            $new_balance = $due_amount - $paid_now;
 
 			$screenshot_path = null;
 			if ($screenshot && $screenshot['error'] == UPLOAD_ERR_OK) {
@@ -725,8 +958,10 @@
 				move_uploaded_file($screenshot['tmp_name'], $screenshot_path);
 			}
 
+			// Preserve submitted amount for admin display in gcash_name when e-wallets are used
+			$submitted_amount = (is_numeric($gcash_name) ? (float)$gcash_name : $paid_now);
 			$request = $this->dbh->prepare("UPDATE payments SET status = 'Pending', balance = ?, payment_method = ?, reference_number = ?, gcash_name = ?, gcash_number = ?, screenshot = ? WHERE id = ?");
-			return $request->execute([$new_balance, $payment_method, $reference_number, $gcash_name, $gcash_number, $screenshot_path, $payment_id]);
+			return $request->execute([$new_balance, $payment_method, $reference_number, $submitted_amount, $gcash_number, $screenshot_path, $payment_id]);
 		}
 
 		public function processManualPayment($customer_id, $employer_id, $amount, $reference_number, $selected_bills, $screenshot = null)
@@ -747,7 +982,7 @@
 
 				$remaining_amount = (float)$amount;
 
-				foreach ($selected_bills as $bill_id) {
+                foreach ($selected_bills as $bill_id) {
 					if ($remaining_amount <= 0) {
 						break;
 					}
@@ -757,7 +992,7 @@
 						continue;
 					}
 
-					$due_amount = ($bill->balance > 0) ? (float)$bill->balance : (float)$bill->amount;
+                    $due_amount = ($bill->balance > 0) ? (float)$bill->balance : (float)$bill->amount;
 
 					if ($remaining_amount >= $due_amount) {
 						$new_balance = 0;
@@ -779,6 +1014,8 @@
 						$bill_id
 					]);
 
+
+
 					$remaining_amount -= $payment_for_this_bill;
 				}
 
@@ -799,26 +1036,73 @@
 			if ($payment->screenshot && file_exists($payment->screenshot)) {
 				unlink($payment->screenshot);
 			}
+			// Determine the submitted amount for this approval
+			$submitted_amount = 0.0;
+			if (isset($payment->gcash_name) && is_numeric($payment->gcash_name)) {
+				$submitted_amount = (float)$payment->gcash_name;
+			} else {
+				// Fallback: compute remaining unrecorded portion by subtracting any previously recorded amounts
+				$sumRequest = $this->dbh->prepare("SELECT COALESCE(SUM(paid_amount),0) AS total_recorded FROM payment_history WHERE payment_id = ?");
+				$sumRequest->execute([$payment_id]);
+				$row = $sumRequest->fetch();
+				$total_recorded = $row ? (float)$row->total_recorded : 0.0;
+				$already_paid_total = (float)$payment->amount - (float)$payment->balance;
+				$submitted_amount = max(0.0, $already_paid_total - $total_recorded);
+			}
+
+			// Insert a history entry for this payment approval
+			if ($submitted_amount > 0) {
+				$this->insertPaymentHistoryEntry($payment, $submitted_amount);
+			}
+
 			$new_status = ($payment->balance <= 0) ? 'Paid' : 'Unpaid';
 			$request = $this->dbh->prepare("UPDATE payments SET status = ?, p_date = NOW(), screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
 			return $request->execute([$new_status, $payment_id]);
 		}
 
-		public function rejectPayment($payment_id)
-		{
-			$payment = $this->getPaymentById($payment_id);
-			if (!$payment) {
-				return false;
-			}
+        public function rejectPayment($payment_id)
+        {
+            $payment = $this->getPaymentById($payment_id);
+            if (!$payment) {
+                return false;
+            }
 
-			if ($payment->screenshot && file_exists($payment->screenshot)) {
-				unlink($payment->screenshot);
-			}
-			$previous_balance = (float)$payment->balance + (float)$payment->gcash_name;
+            if ($payment->screenshot && file_exists($payment->screenshot)) {
+                unlink($payment->screenshot);
+            }
 
-			$request = $this->dbh->prepare("UPDATE payments SET status = 'Unpaid', balance = ?, screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
-			return $request->execute([$previous_balance, $payment_id]);
-		}
+            // Restore balance to the state BEFORE the pending submission.
+            // The submitted amount for this pending entry is stored temporarily
+            // in gcash_name (for both Manual and e-wallet payments). If not
+            // available, derive it from the ledger to avoid resetting prior
+            // partial payments.
+            $submitted_amount = 0.0;
+            if (isset($payment->gcash_name) && is_numeric($payment->gcash_name)) {
+                $submitted_amount = (float)$payment->gcash_name;
+            } else {
+                // Fallback: compute amount included in this pending update that
+                // is not yet recorded in payment_history.
+                $sumRequest = $this->dbh->prepare("SELECT COALESCE(SUM(paid_amount),0) AS total_recorded FROM payment_history WHERE payment_id = ?");
+                $sumRequest->execute([$payment_id]);
+                $row = $sumRequest->fetch();
+                $total_recorded = $row ? (float)$row->total_recorded : 0.0;
+                $already_paid_total = (float)$payment->amount - (float)$payment->balance; // includes the pending part
+                $submitted_amount = max(0.0, $already_paid_total - $total_recorded);
+            }
+
+            // Current balance is (previous_due - submitted_amount). Add back the
+            // submitted amount to restore the previous due, and clamp within [0, amount].
+            $restore_balance = (float)$payment->balance + $submitted_amount;
+            if ($restore_balance > (float)$payment->amount) {
+                $restore_balance = (float)$payment->amount;
+            }
+            if ($restore_balance < 0) {
+                $restore_balance = 0.0;
+            }
+
+            $request = $this->dbh->prepare("UPDATE payments SET status = 'Rejected', balance = ?, screenshot = NULL, gcash_name = NULL, gcash_number = NULL WHERE id = ?");
+            return $request->execute([$restore_balance, $payment_id]);
+        }
 		
 		public function getCustomerInfo($id)
 		{
@@ -905,7 +1189,19 @@
 					$values = explode(',', $bill_id);
 					$placeholder = rtrim(str_repeat('?, ', count($values)), ', ');
 
-					$request2 = $this->dbh->prepare("UPDATE payments SET status='Paid',p_date = NOW() WHERE id IN ($placeholder)");
+					// For each payment, compute paid portion and insert into ledger
+					foreach ($values as $pid) {
+						$payment = $this->getPaymentById($pid);
+						if ($payment) {
+							$paid_amount = (float)$payment->amount; // settling in full via billPay
+							$payment->balance = 0.0;
+							$payment->payment_method = 'Admin';
+							$payment->reference_number = null;
+							$this->insertPaymentHistoryEntry($payment, $paid_amount);
+						}
+					}
+
+					$request2 = $this->dbh->prepare("UPDATE payments SET status='Paid', balance = 0, p_date = NOW() WHERE id IN ($placeholder)");
 					$request2->execute($values);
 				$this->dbh->commit();
 				return true;
@@ -920,8 +1216,8 @@
 	// Bill generation of a Month
 		public function billGenerate($customer_id, $r_month, $amount){
 			try {
-				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount) VALUES(?,?,?)");
-				return $request->execute([$customer_id, $r_month, $amount]);
+				$request = $this->dbh->prepare("INSERT IGNORE INTO payments (customer_id, r_month, amount, balance) VALUES(?,?,?,?)");
+				return $request->execute([$customer_id, $r_month, $amount, $amount]);
 			} catch (Exception $e) {
 				return false;
 			}
