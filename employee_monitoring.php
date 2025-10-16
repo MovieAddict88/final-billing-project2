@@ -203,6 +203,7 @@ $monitoring_data = $admins->getEmployerMonitoringData();
     .monthly-paid .stat-value { color: var(--dark-green); }
     .monthly-unpaid .stat-value { color: var(--dark-red); }
     .total-balance .stat-value { color: var(--dark-red); }
+    .performance-indicator .stat-value { color: var(--primary-blue); }
 
 
     /* Colorful left borders */
@@ -216,6 +217,35 @@ $monitoring_data = $admins->getEmployerMonitoringData();
     .monthly-paid { border-left-color: var(--dark-green); }
     .monthly-unpaid { border-left-color: var(--dark-red); }
     .total-balance { border-left-color: var(--dark-red); }
+    .performance-indicator { border-left-color: var(--primary-blue); }
+    
+    /* Progress bar styling */
+    .progress-container {
+        position: relative;
+        background-color: #e9ecef;
+        border-radius: 10px;
+        height: 20px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-green), var(--primary-blue));
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+    }
 
     .no-data {
         text-align: center;
@@ -322,9 +352,137 @@ $monitoring_data = $admins->getEmployerMonitoringData();
     .monitoring-container .employer-card:nth-child(2) { animation-delay: 0.2s; }
     .monitoring-container .employer-card:nth-child(3) { animation-delay: 0.3s; }
     .monitoring-container .employer-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Search and Controls Styling */
+    .controls-container {
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: 0 2px 8px var(--shadow-light);
+        margin-bottom: 25px;
+        padding: 20px;
+    }
+
+    .search-box .input-group {
+        box-shadow: 0 2px 4px var(--shadow-light);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .search-box .input-group-addon {
+        background: var(--primary-blue);
+        color: white;
+        border: none;
+        padding: 12px 15px;
+    }
+
+    .search-box .form-control {
+        border: none;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+    }
+
+    .search-box .form-control:focus {
+        box-shadow: none;
+        border-color: var(--primary-blue);
+    }
+
+    .stats-summary .badge {
+        margin-left: 8px;
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+
+    .badge-primary { background-color: var(--primary-blue); }
+    .badge-success { background-color: var(--primary-green); }
+    .badge-info { background-color: #17a2b8; }
+
+    /* Hidden class for search filtering */
+    .employer-card.hidden {
+        display: none;
+    }
+
+    /* Loading and error states */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-light);
+    }
+    
+    .loading i {
+        font-size: 2rem;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 20px;
+        text-align: center;
+        border: 1px solid #f5c6cb;
+    }
+    
+    /* Enhanced card hover effects */
+    .employer-card:hover .progress-bar {
+        transform: scaleX(1.05);
+        transition: transform 0.3s ease;
+    }
+    
+    /* Responsive controls */
+    @media (max-width: 768px) {
+        .controls-container {
+            padding: 15px;
+        }
+        
+        .stats-summary {
+            text-align: left !important;
+            margin-top: 15px;
+        }
+        
+        .stats-summary .badge {
+            display: block;
+            margin: 5px 0;
+            width: fit-content;
+        }
+        
+        .progress-container {
+            height: 16px;
+        }
+        
+        .progress-text {
+            font-size: 0.7rem;
+        }
+    }
 </style>
 
 <h1 class="page-title">Employee Monitoring</h1>
+
+<!-- Search and Filter Controls -->
+<div class="controls-container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px 20px;">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="search-box">
+                <div class="input-group">
+                    <span class="input-group-addon"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" id="employee-search" placeholder="Search employees by name or location...">
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 text-right">
+            <div class="stats-summary">
+                <span class="badge badge-primary" id="total-employees"><?php echo count($monitoring_data); ?> Employees</span>
+                <span class="badge badge-success" id="total-customers">0 Total Customers</span>
+                <span class="badge badge-info" id="total-collection">₱0 Collection</span>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="monitoring-container">
     <?php if (!empty($monitoring_data)): ?>
@@ -387,6 +545,34 @@ $monitoring_data = $admins->getEmployerMonitoringData();
                         </span>
                         <span class="stat-value">₱<?php echo number_format($data->stats['total_balance'], 2); ?></span>
                     </div>
+                    
+                    <!-- Performance Indicators -->
+                    <?php 
+                    $total_customers = $data->stats['total_customers'];
+                    $paid_customers = $data->stats['paid_customers'];
+                    $payment_rate = $total_customers > 0 ? ($paid_customers / $total_customers) * 100 : 0;
+                    $collection_rate = $data->stats['monthly_paid_collection'] > 0 ? 
+                        ($data->stats['monthly_paid_collection'] / ($data->stats['monthly_paid_collection'] + $data->stats['monthly_unpaid_collection'])) * 100 : 0;
+                    ?>
+                    
+                    <div class="stat-item performance-indicator">
+                        <span class="stat-label">
+                            <i class="fas fa-chart-line"></i>
+                            Payment Rate
+                        </span>
+                        <div class="progress-container">
+                            <div class="progress-bar" style="width: <?php echo min(100, $payment_rate); ?>%"></div>
+                            <span class="progress-text"><?php echo number_format($payment_rate, 1); ?>%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-item performance-indicator">
+                        <span class="stat-label">
+                            <i class="fas fa-percentage"></i>
+                            Collection Rate
+                        </span>
+                        <span class="stat-value"><?php echo number_format($collection_rate, 1); ?>%</span>
+                    </div>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -397,5 +583,92 @@ $monitoring_data = $admins->getEmployerMonitoringData();
         </div>
     <?php endif; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('employee-search');
+    const cards = document.querySelectorAll('.employer-card');
+    const totalEmployeesBadge = document.getElementById('total-employees');
+    const totalCustomersBadge = document.getElementById('total-customers');
+    const totalCollectionBadge = document.getElementById('total-collection');
+    
+    // Calculate and display summary statistics
+    function updateSummaryStats() {
+        let totalCustomers = 0;
+        let totalCollection = 0;
+        
+        cards.forEach(card => {
+            if (!card.classList.contains('hidden')) {
+                const customers = parseInt(card.querySelector('.total-customers .stat-value').textContent) || 0;
+                const collection = parseFloat(card.querySelector('.monthly-paid .stat-value').textContent.replace(/[₱,]/g, '')) || 0;
+                totalCustomers += customers;
+                totalCollection += collection;
+            }
+        });
+        
+        totalCustomersBadge.textContent = totalCustomers + ' Total Customers';
+        totalCollectionBadge.textContent = '₱' + totalCollection.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+    
+    // Search functionality
+    function filterCards(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        
+        cards.forEach(card => {
+            const name = card.querySelector('.employer-details h3').textContent.toLowerCase();
+            const location = card.querySelector('.location').textContent.toLowerCase();
+            
+            if (term === '' || name.includes(term) || location.includes(term)) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+        
+        updateSummaryStats();
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('input', function() {
+        filterCards(this.value);
+    });
+    
+    // Initialize summary stats
+    updateSummaryStats();
+    
+    // Add smooth scrolling for better UX
+    document.querySelectorAll('.employer-card').forEach((card, index) => {
+        card.style.animationDelay = (index * 0.1) + 's';
+    });
+    
+    // Add click handlers for card interactions
+    cards.forEach(card => {
+        card.addEventListener('click', function() {
+            // Add a subtle click effect
+            this.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        });
+    });
+    
+    // Add keyboard navigation for search
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            filterCards('');
+        }
+    });
+    
+    // Add debounced search for better performance
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterCards(this.value);
+        }, 300);
+    });
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>
